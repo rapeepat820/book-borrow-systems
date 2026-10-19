@@ -5,7 +5,7 @@
 -- ต้องรันหลัง migration_v3.sql (ต้องมีคอลัมน์ publisher/publish_year/edition/volume/print_no อยู่ก่อนแล้ว)
 -- ปลอดภัยที่จะรันซ้ำ — ใช้ตาราง __new_books_v4 ชั่วคราวกรองเฉพาะชื่อที่ยังไม่มีในระบบก่อนเพิ่ม
 -- ============================================================
-USE book_borrow_system;
+USE railway;
 
 CREATE TEMPORARY TABLE __new_books_v4 (
   title VARCHAR(255), author VARCHAR(150), cover_image VARCHAR(255), description TEXT,

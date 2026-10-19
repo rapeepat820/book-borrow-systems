@@ -3,9 +3,9 @@
 -- Database: MySQL 8.x
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS book_borrow_system
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE book_borrow_system;
+--CREATE DATABASE IF NOT EXISTS book_borrow_system
+--CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+--USE book_borrow_system;
 
 -- ------------------------------------------------------------
 -- 1) ผู้ใช้งาน (ลูกค้า + แอดมิน)

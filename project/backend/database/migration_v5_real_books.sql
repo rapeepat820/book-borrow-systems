@@ -7,7 +7,7 @@
 -- ใช้ได้ทั้งฐานข้อมูลใหม่และเก่า ต้องรันหลัง schema.sql / migration_v3.sql  (ปลอดภัยที่จะรันซ้ำ: ข้ามชื่อที่มีอยู่แล้ว)
 -- รัน:  mysql -uroot --default-character-set=utf8mb4 < backend/database/migration_v5_real_books.sql
 -- ============================================================
-USE book_borrow_system;
+USE railway;
 SET NAMES utf8mb4;
 
 CREATE TEMPORARY TABLE __new_books_v5 (

@@ -6,7 +6,7 @@
 --   3) เพิ่มการคิดค่าธรรมเนียมต่ออายุยืมในตาราง borrow_records
 -- รันไฟล์นี้ผ่าน Railway Query tab หรือ mysql client ที่ต่อกับฐานข้อมูลเดิม
 -- ============================================================
-USE book_borrow_system;
+USE railway;
 
 ALTER TABLE users
   ADD COLUMN address_detail VARCHAR(255) AFTER address,
