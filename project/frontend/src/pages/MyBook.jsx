@@ -82,6 +82,9 @@ export default function MyBook() {
                 </div>
               </div>
 
+              <p className="muted" style={{ margin: '10px 0 0', fontSize: 13 }}>
+                มีปัญหาเกี่ยวกับรายการนี้? <Link to={`/contact?record=${r.id}`} className="btn-link">ติดต่อเจ้าหน้าที่</Link>
+              </p>
               <div className="btn-row">
                 {r.payment_status === 'pending' && (
                   <Link to={`/borrow/${r.id}/payment`} className="btn-primary auto" style={{ flex: 1 }}>ชำระเงิน</Link>

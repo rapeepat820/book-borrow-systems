@@ -62,6 +62,7 @@ export default function Login() {
         </form>
 
         <p className="footnote">ยังไม่มีบัญชี? <Link to="/register" className="btn-link">สมัครสมาชิก</Link></p>
+        <p className="footnote">มีปัญหาในการใช้งาน? <Link to="/contact" className="btn-link">ติดต่อเจ้าหน้าที่</Link></p>
         <BarChartDecoration />
       </div>
     </div>
