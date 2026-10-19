@@ -1,0 +1,430 @@
+{
+ "covers": {
+  "The Quantum Future": "/book-covers/the-quantum-future.jpg",
+  "Space and Light": "/book-covers/space-and-light.jpg",
+  "เสียงกระซิบจากขุนเขา": "/book-covers/book-f451ba13.jpg",
+  "The Last Lighthouse Keeper": "/book-covers/the-last-lighthouse-keeper.jpg",
+  "ก่อนพรุ่งนี้จะมาถึง": "/book-covers/book-af9f1a54.jpg",
+  "Midnight in Havoc City": "/book-covers/midnight-in-havoc-city.jpg",
+  "ทะเลไม่เคยจำใคร": "/book-covers/book-deaabfe3.jpg",
+  "นักสืบจิ๋วแห่งซอยเงียบ เล่ม 1": "/book-covers/book-54c4ae86.jpg",
+  "Starlight Squad: Origins": "/book-covers/starlight-squad-origins.jpg",
+  "ร้านขนมของคุณยายมัตสึ เล่ม 1": "/book-covers/book-a67ef033.jpg",
+  "The Iron Garden": "/book-covers/the-iron-garden.jpg",
+  "ตำนานมังกรครึ่งฟ้า เล่ม 1": "/book-covers/book-6e8b5721.jpg",
+  "Coffee and Constellations": "/book-covers/coffee-and-constellations.jpg",
+  "Mindful Leadership": "/book-covers/mindful-leadership.jpg",
+  "หลักเศรษฐศาสตร์พฤติกรรมเบื้องต้น": "/book-covers/book-15eada4b.jpg",
+  "Introduction to Applied Statistics": "/book-covers/introduction-to-applied-statistics.jpg",
+  "พื้นฐานการเขียนโปรแกรมเชิงวัตถุ": "/book-covers/book-5a956f40.jpg",
+  "A Concise History of Southeast Asia": "/book-covers/a-concise-history-of-southeast-asia.jpg",
+  "จิตวิทยาการเรียนรู้สำหรับครู": "/book-covers/book-a545c380.jpg",
+  "บันทึกการเดินทาง ฉบับพิมพ์ครั้งแรก": "/book-covers/book-a7ef8df1.jpg",
+  "First Edition: The Silent Atlas": "/book-covers/first-edition-the-silent-atlas.jpg",
+  "กวีนิพนธ์ล้านนา ฉบับอนุรักษ์": "/book-covers/book-c5723b09.jpg",
+  "Signed Copy: Letters from the Observatory": "/book-covers/signed-copy-letters-from-the-observatory.jpg",
+  "ตำรายาไทยโบราณ ฉบับหายาก": "/book-covers/book-962f4ee7.jpg",
+  "เงาฝันในสายลมหนาว": "/book-covers/book-cf6555bc.jpg",
+  "The Paper Cartographer": "/book-covers/the-paper-cartographer.jpg",
+  "เพื่อนต่างดาวที่บ้านฉัน เล่ม 1": "/book-covers/book-a510464a.jpg",
+  "Nightshade Academy: Vol. 1": "/book-covers/nightshade-academy-vol-1.jpg",
+  "หลักการตลาดดิจิทัลยุคใหม่": "/book-covers/book-415a4add.jpg",
+  "Fundamentals of Environmental Science": "/book-covers/fundamentals-of-environmental-science.jpg",
+  "สมุดข่อยโหราศาสตร์ไทยโบราณ": "/book-covers/book-fcc9f133.jpg",
+  "Rare Manuscript: The Merchant's Ledger 1889": "/book-covers/rare-manuscript-the-merchant-s-ledger-1889.jpg",
+  "1984": "https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg",
+  "Pride and Prejudice": "https://covers.openlibrary.org/b/isbn/9780141439518-L.jpg",
+  "The Great Gatsby": "https://covers.openlibrary.org/b/isbn/9780743273565-L.jpg",
+  "To Kill a Mockingbird": "https://covers.openlibrary.org/b/isbn/9780061120084-L.jpg",
+  "The Little Prince": "https://covers.openlibrary.org/b/isbn/9780156012195-L.jpg",
+  "The Alchemist": "https://covers.openlibrary.org/b/isbn/9780062315007-L.jpg",
+  "Norwegian Wood": "https://covers.openlibrary.org/b/isbn/9780375704024-L.jpg",
+  "Maus I: A Survivor's Tale": "https://covers.openlibrary.org/b/isbn/9780679406419-L.jpg",
+  "Persepolis: The Story of a Childhood": "https://covers.openlibrary.org/b/isbn/9780375714832-L.jpg",
+  "Watchmen": "https://covers.openlibrary.org/b/isbn/9780930289232-L.jpg",
+  "Naruto, Vol. 1": "https://covers.openlibrary.org/b/isbn/9781569319000-L.jpg",
+  "One Piece, Vol. 1": "https://covers.openlibrary.org/b/isbn/9781569319017-L.jpg",
+  "Sapiens: A Brief History of Humankind": "https://covers.openlibrary.org/b/isbn/9780062316110-L.jpg",
+  "A Brief History of Time": "https://covers.openlibrary.org/b/isbn/9780553380163-L.jpg",
+  "Clean Code": "https://covers.openlibrary.org/b/isbn/9780132350884-L.jpg",
+  "Thinking, Fast and Slow": "https://covers.openlibrary.org/b/isbn/9780374533557-L.jpg",
+  "Introduction to Algorithms": "https://covers.openlibrary.org/b/isbn/9780262033848-L.jpg",
+  "The Hobbit": "https://covers.openlibrary.org/b/isbn/9780547928227-L.jpg",
+  "Frankenstein": "https://covers.openlibrary.org/b/isbn/9780486282114-L.jpg",
+  "Dracula": "https://covers.openlibrary.org/b/isbn/9780486411095-L.jpg",
+  "Alice's Adventures in Wonderland": "https://covers.openlibrary.org/b/isbn/9780486275437-L.jpg"
+ },
+ "details": {
+  "The Quantum Future": {
+   "publisher": "Aurora House Publishing",
+   "publish_year": 2021,
+   "edition": "ฉบับพิมพ์ครั้งแรก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Space and Light": {
+   "publisher": "Aurora House Publishing",
+   "publish_year": 2020,
+   "edition": "ฉบับปรับปรุง",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 2
+  },
+  "เสียงกระซิบจากขุนเขา": {
+   "publisher": "สำนักพิมพ์ประพันธ์สาส์น",
+   "publish_year": 2022,
+   "edition": "ฉบับพิมพ์ครั้งแรก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "The Last Lighthouse Keeper": {
+   "publisher": "Lighthouse Press",
+   "publish_year": 2019,
+   "edition": "ฉบับพิมพ์ครั้งแรก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "ก่อนพรุ่งนี้จะมาถึง": {
+   "publisher": "สำนักพิมพ์นานมีบุ๊คส์",
+   "publish_year": 2023,
+   "edition": "ฉบับพิมพ์ครั้งแรก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Midnight in Havoc City": {
+   "publisher": "Renard & Cole Publishing",
+   "publish_year": 2018,
+   "edition": "ฉบับปรับปรุงครั้งที่ 2",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 3
+  },
+  "ทะเลไม่เคยจำใคร": {
+   "publisher": "สำนักพิมพ์ผีเสื้อ",
+   "publish_year": 2021,
+   "edition": "ฉบับพิมพ์ครั้งแรก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "นักสืบจิ๋วแห่งซอยเงียบ เล่ม 1": {
+   "publisher": "สำนักพิมพ์การ์ตูนไทย",
+   "publish_year": 2022,
+   "edition": "ฉบับการ์ตูน",
+   "volume": "เล่ม 1",
+   "print_no": 2
+  },
+  "Starlight Squad: Origins": {
+   "publisher": "Ember Comics Studio",
+   "publish_year": 2021,
+   "edition": "ฉบับการ์ตูน",
+   "volume": "เล่ม 1",
+   "print_no": 1
+  },
+  "ร้านขนมของคุณยายมัตสึ เล่ม 1": {
+   "publisher": "สำนักพิมพ์ซากุระคอมมิค",
+   "publish_year": 2023,
+   "edition": "ฉบับการ์ตูน",
+   "volume": "เล่ม 1",
+   "print_no": 1
+  },
+  "The Iron Garden": {
+   "publisher": "Ember Comics Studio",
+   "publish_year": 2020,
+   "edition": "ฉบับการ์ตูน",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 2
+  },
+  "ตำนานมังกรครึ่งฟ้า เล่ม 1": {
+   "publisher": "สำนักพิมพ์การ์ตูนไทย",
+   "publish_year": 2022,
+   "edition": "ฉบับการ์ตูน",
+   "volume": "เล่ม 1",
+   "print_no": 1
+  },
+  "Coffee and Constellations": {
+   "publisher": "Ember Comics Studio",
+   "publish_year": 2023,
+   "edition": "ฉบับการ์ตูน",
+   "volume": "รวมเล่ม",
+   "print_no": 1
+  },
+  "Mindful Leadership": {
+   "publisher": "Academic Press International",
+   "publish_year": 2020,
+   "edition": "ฉบับพิมพ์ครั้งแรก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "หลักเศรษฐศาสตร์พฤติกรรมเบื้องต้น": {
+   "publisher": "สำนักพิมพ์จุฬาลงกรณ์มหาวิทยาลัย",
+   "publish_year": 2021,
+   "edition": "ฉบับปรับปรุงครั้งที่ 2",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 3
+  },
+  "Introduction to Applied Statistics": {
+   "publisher": "Academic Press International",
+   "publish_year": 2019,
+   "edition": "ฉบับปรับปรุงครั้งที่ 3",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 4
+  },
+  "พื้นฐานการเขียนโปรแกรมเชิงวัตถุ": {
+   "publisher": "สำนักพิมพ์มหาวิทยาลัยธรรมศาสตร์",
+   "publish_year": 2022,
+   "edition": "ฉบับปรับปรุง",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 2
+  },
+  "A Concise History of Southeast Asia": {
+   "publisher": "Academic Press International",
+   "publish_year": 2018,
+   "edition": "ฉบับพิมพ์ครั้งแรก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "จิตวิทยาการเรียนรู้สำหรับครู": {
+   "publisher": "สำนักพิมพ์จุฬาลงกรณ์มหาวิทยาลัย",
+   "publish_year": 2020,
+   "edition": "ฉบับปรับปรุงครั้งที่ 2",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 2
+  },
+  "บันทึกการเดินทาง ฉบับพิมพ์ครั้งแรก": {
+   "publisher": "โรงพิมพ์หลวง",
+   "publish_year": 1968,
+   "edition": "ฉบับพิมพ์ครั้งแรก (หายาก)",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "First Edition: The Silent Atlas": {
+   "publisher": "Royal Cartographic Society",
+   "publish_year": 1897,
+   "edition": "ฉบับพิมพ์ครั้งแรก (หายาก)",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "กวีนิพนธ์ล้านนา ฉบับอนุรักษ์": {
+   "publisher": "สำนักพิมพ์ล้านนาอนุรักษ์",
+   "publish_year": 1975,
+   "edition": "ฉบับอนุรักษ์ พิมพ์จำกัดจำนวน",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Signed Copy: Letters from the Observatory": {
+   "publisher": "Observatory Press",
+   "publish_year": 1954,
+   "edition": "ฉบับพิมพ์จำกัดจำนวน มีลายเซ็นผู้เขียน",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "ตำรายาไทยโบราณ ฉบับหายาก": {
+   "publisher": "คัดลอกจากต้นฉบับใบลาน",
+   "publish_year": 1932,
+   "edition": "ฉบับคัดลอกจากใบลาน",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "เงาฝันในสายลมหนาว": {
+   "publisher": "สำนักพิมพ์ผีเสื้อ",
+   "publish_year": 2023,
+   "edition": "ฉบับพิมพ์ครั้งแรก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "The Paper Cartographer": {
+   "publisher": "Lighthouse Press",
+   "publish_year": 2022,
+   "edition": "ฉบับพิมพ์ครั้งแรก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "เพื่อนต่างดาวที่บ้านฉัน เล่ม 1": {
+   "publisher": "สำนักพิมพ์การ์ตูนไทย",
+   "publish_year": 2023,
+   "edition": "ฉบับการ์ตูน",
+   "volume": "เล่ม 1",
+   "print_no": 1
+  },
+  "Nightshade Academy: Vol. 1": {
+   "publisher": "Ember Comics Studio",
+   "publish_year": 2023,
+   "edition": "ฉบับการ์ตูน",
+   "volume": "เล่ม 1",
+   "print_no": 1
+  },
+  "หลักการตลาดดิจิทัลยุคใหม่": {
+   "publisher": "สำนักพิมพ์จุฬาลงกรณ์มหาวิทยาลัย",
+   "publish_year": 2023,
+   "edition": "ฉบับปรับปรุงครั้งที่ 2",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 2
+  },
+  "Fundamentals of Environmental Science": {
+   "publisher": "Academic Press International",
+   "publish_year": 2021,
+   "edition": "ฉบับปรับปรุงครั้งที่ 2",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 2
+  },
+  "สมุดข่อยโหราศาสตร์ไทยโบราณ": {
+   "publisher": "คัดลอกจากสมุดข่อยดั้งเดิม",
+   "publish_year": 1948,
+   "edition": "ฉบับคัดลอกจากสมุดข่อย",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Rare Manuscript: The Merchant's Ledger 1889": {
+   "publisher": "ไม่ระบุสำนักพิมพ์ (ต้นฉบับลายมือ)",
+   "publish_year": 1889,
+   "edition": "ต้นฉบับลายมือ ฉบับเดียวในโลก",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "1984": {
+   "publisher": "Signet Classics",
+   "publish_year": 1949,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Pride and Prejudice": {
+   "publisher": "Penguin Classics",
+   "publish_year": 1813,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "The Great Gatsby": {
+   "publisher": "Scribner",
+   "publish_year": 1925,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "To Kill a Mockingbird": {
+   "publisher": "Harper Perennial",
+   "publish_year": 1960,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "The Little Prince": {
+   "publisher": "Harcourt",
+   "publish_year": 1943,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "The Alchemist": {
+   "publisher": "HarperOne",
+   "publish_year": 1988,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Norwegian Wood": {
+   "publisher": "Vintage",
+   "publish_year": 1987,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Maus I: A Survivor's Tale": {
+   "publisher": "Pantheon",
+   "publish_year": 1986,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่ม 1",
+   "print_no": 1
+  },
+  "Persepolis: The Story of a Childhood": {
+   "publisher": "Pantheon",
+   "publish_year": 2000,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่ม 1",
+   "print_no": 1
+  },
+  "Watchmen": {
+   "publisher": "DC Comics",
+   "publish_year": 1987,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Naruto, Vol. 1": {
+   "publisher": "VIZ Media",
+   "publish_year": 1999,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่ม 1",
+   "print_no": 1
+  },
+  "One Piece, Vol. 1": {
+   "publisher": "VIZ Media",
+   "publish_year": 1997,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่ม 1",
+   "print_no": 1
+  },
+  "Sapiens: A Brief History of Humankind": {
+   "publisher": "Harper",
+   "publish_year": 2011,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "A Brief History of Time": {
+   "publisher": "Bantam",
+   "publish_year": 1988,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Clean Code": {
+   "publisher": "Prentice Hall",
+   "publish_year": 2008,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Thinking, Fast and Slow": {
+   "publisher": "Farrar, Straus and Giroux",
+   "publish_year": 2011,
+   "edition": "ฉบับพิมพ์ภาษาอังกฤษ",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Introduction to Algorithms": {
+   "publisher": "MIT Press",
+   "publish_year": 1990,
+   "edition": "ฉบับที่ 3",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 3
+  },
+  "The Hobbit": {
+   "publisher": "Houghton Mifflin Harcourt",
+   "publish_year": 1937,
+   "edition": "ฉบับสะสม",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Frankenstein": {
+   "publisher": "Dover Publications",
+   "publish_year": 1818,
+   "edition": "ฉบับสะสม",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Dracula": {
+   "publisher": "Dover Publications",
+   "publish_year": 1897,
+   "edition": "ฉบับสะสม",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  },
+  "Alice's Adventures in Wonderland": {
+   "publisher": "Dover Publications",
+   "publish_year": 1865,
+   "edition": "ฉบับสะสม",
+   "volume": "เล่มเดียวจบ",
+   "print_no": 1
+  }
+ }
+}
