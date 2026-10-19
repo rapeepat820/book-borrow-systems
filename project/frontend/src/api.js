@@ -80,7 +80,9 @@ export const api = {
   adminCreateBorrowRecord: (payload) => request('/admin/borrow-records', { method: 'POST', body: payload }),
   adminUpdateShippingStatus: (id, shipping_status, tracking_no) =>
     request(`/admin/borrow-records/${id}/shipping-status`, { method: 'PUT', body: { shipping_status, tracking_no } }),
-  adminConfirmReturn: (id) => request(`/admin/borrow-records/${id}/confirm-return`, { method: 'PUT' }),
+  adminConfirmReturn: (id, payload = {}) => request(`/admin/borrow-records/${id}/confirm-return`, { method: 'PUT', body: payload }),
+  adminMarkRefunded: (id, reference) => request(`/admin/borrow-records/${id}/mark-refunded`, { method: 'PUT', body: { reference } }),
+  adminSendOverdueReminders: () => request('/admin/send-overdue-reminders', { method: 'POST' }),
   adminResolveExtend: (id, approve) => request(`/admin/borrow-records/${id}/resolve-extend`, { method: 'PUT', body: { approve } }),
   adminVerifyExtendPayment: (id, approve) => request(`/admin/borrow-records/${id}/verify-extend-payment`, { method: 'PUT', body: { approve } }),
   adminVerifyPayment: (id, approve) => request(`/admin/borrow-records/${id}/verify-payment`, { method: 'PUT', body: { approve } })
