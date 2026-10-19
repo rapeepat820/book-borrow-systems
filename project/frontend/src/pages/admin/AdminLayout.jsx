@@ -2,13 +2,14 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import Logo from '../../components/Logo';
 import ThemeToggle from '../../components/ThemeToggle';
 import { getSession, clearSession } from '../../api';
-import { HomeIcon, BookStackIcon, UsersIcon, RepeatIcon, LogoutIcon } from '../../components/Icons';
+import { HomeIcon, BookStackIcon, UsersIcon, RepeatIcon, MessageIcon, LogoutIcon } from '../../components/Icons';
 
 const NAV = [
   { to: '/admin', label: 'Dashboard', Icon: HomeIcon, end: true },
   { to: '/admin/books', label: 'คลังหนังสือ', Icon: BookStackIcon },
   { to: '/admin/members', label: 'สมาชิก', Icon: UsersIcon },
-  { to: '/admin/borrow-records', label: 'การยืม-คืน', Icon: RepeatIcon }
+  { to: '/admin/borrow-records', label: 'การยืม-คืน', Icon: RepeatIcon },
+  { to: '/admin/contact', label: 'ข้อความติดต่อ', Icon: MessageIcon }
 ];
 
 export default function AdminLayout() {

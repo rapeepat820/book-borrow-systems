@@ -100,6 +100,11 @@ export default function AdminDashboard() {
           <h3>{stats.pendingReturnCheck}</h3>
           <p>รอตรวจสอบการคืนหนังสือ</p>
         </Link>
+        <Link to="/admin/contact" className="card stat-card link warn">
+          <div className="stat-card-icon"><AlertIcon size={20} /></div>
+          <h3>{stats.newMessages ?? 0}</h3>
+          <p>ข้อความติดต่อใหม่</p>
+        </Link>
         <Link to="/admin/borrow-records?filter=refund_pending" className="card stat-card link warn">
           <div className="stat-card-icon"><RepeatIcon size={20} /></div>
           <h3>{stats.pendingRefunds ?? 0}</h3>
