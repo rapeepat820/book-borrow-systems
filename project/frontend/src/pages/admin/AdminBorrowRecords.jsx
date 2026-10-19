@@ -24,7 +24,7 @@ const PAGE_SIZE = 8;
 
 export default function AdminBorrowRecords() {
   const [records, setRecords] = useState([]);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState(() => new URLSearchParams(window.location.search).get('filter') || '');
   const [page, setPage] = useState(1);
 
   const [showModal, setShowModal] = useState(false);
@@ -36,6 +36,15 @@ export default function AdminBorrowRecords() {
   const [addressRecord, setAddressRecord] = useState(null);
   const [slipRecord, setSlipRecord] = useState(null);
   const [extendSlipRecord, setExtendSlipRecord] = useState(null);
+
+  // ยืนยันการคืน (คำนวณค่าปรับ) และบันทึกการโอนมัดจำคืน
+  const [returnRecord, setReturnRecord] = useState(null);
+  const [lateFeeInput, setLateFeeInput] = useState('');
+  const [returnError, setReturnError] = useState('');
+  const [refundRecord, setRefundRecord] = useState(null);
+  const [refundRef, setRefundRef] = useState('');
+  const [refundError, setRefundError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const [shipRecord, setShipRecord] = useState(null);
   const [shipForm, setShipForm] = useState({ shipping_status: 'preparing', tracking_no: '' });
@@ -93,10 +102,46 @@ export default function AdminBorrowRecords() {
     }
   }
 
-  async function handleConfirmReturn(id) {
-    if (!confirm('ยืนยันว่าตรวจสอบหลักฐานแล้วและจะคืนเงินมัดจำ?')) return;
-    await api.adminConfirmReturn(id);
-    load();
+  function openReturnModal(r) {
+    setReturnRecord(r);
+    setLateFeeInput(String(r.late_fee_due ?? 0));
+    setReturnError('');
+  }
+
+  async function handleConfirmReturn(e) {
+    e.preventDefault();
+    setReturnError('');
+    setBusy(true);
+    try {
+      await api.adminConfirmReturn(returnRecord.id, { late_fee: Number(lateFeeInput) || 0 });
+      setReturnRecord(null);
+      load();
+    } catch (err) {
+      setReturnError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openRefundModal(r) {
+    setRefundRecord(r);
+    setRefundRef('');
+    setRefundError('');
+  }
+
+  async function handleMarkRefunded(e) {
+    e.preventDefault();
+    setRefundError('');
+    setBusy(true);
+    try {
+      await api.adminMarkRefunded(refundRecord.id, refundRef);
+      setRefundRecord(null);
+      load();
+    } catch (err) {
+      setRefundError(err.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleResolveExtend(id, approve) {
@@ -135,6 +180,7 @@ export default function AdminBorrowRecords() {
         <select value={filter} onChange={e => setFilter(e.target.value)}>
           <option value="">ทุกสถานะ</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <option value="refund_pending">รอโอนมัดจำคืน</option>
         </select>
       </div>
 
@@ -172,6 +218,28 @@ export default function AdminBorrowRecords() {
                 </td>
                 <td>
                   <span className={`status-badge status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                  {r.late_days > 0 && ['borrowing', 'return_requested'].includes(r.status) && (
+                    <div style={{ marginTop: 6 }}>
+                      <span className="status-badge status-overdue">เกินกำหนด {r.late_days} วัน · ปรับ {Number(r.late_fee_due).toLocaleString()} บาท</span>
+                    </div>
+                  )}
+                  {r.status === 'returned' && Number(r.late_fee) > 0 && (
+                    <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>หักค่าปรับ {Number(r.late_fee).toLocaleString()} บาท</p>
+                  )}
+                  {r.status === 'returned' && r.refund_status === 'pending' && (
+                    <div style={{ marginTop: 6 }}>
+                      <span className="pill pill-amber">รอโอนมัดจำคืน {Number(r.refund_amount).toLocaleString()} บาท</span>
+                    </div>
+                  )}
+                  {r.status === 'returned' && r.refund_status === 'refunded' && (
+                    <div style={{ marginTop: 6 }}>
+                      <span className="pill pill-green">โอนคืนแล้ว {Number(r.refund_amount).toLocaleString()} บาท</span>
+                      {r.refund_reference && <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>อ้างอิง: {r.refund_reference}</p>}
+                    </div>
+                  )}
+                  {r.status === 'returned' && r.refund_status === 'none' && Number(r.late_fee) > 0 && Number(r.refund_amount) === 0 && (
+                    <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>ค่าปรับเท่ามัดจำ ไม่มียอดคืน</p>
+                  )}
                   {r.extend_status === 'pending' && (
                     <div style={{ marginTop: 6 }}>
                       <span className="pill pill-amber">ขอต่ออายุ +{r.extend_requested_days} วัน ({r.extend_fee} บาท)</span>
@@ -196,7 +264,10 @@ export default function AdminBorrowRecords() {
                     <button className="btn-link" onClick={() => openShipModal(r)}>อัปเดตสถานะจัดส่ง</button>
                   )}
                   {r.status === 'return_requested' && (
-                    <button className="btn-link" onClick={() => handleConfirmReturn(r.id)}>ยืนยันคืน + คืนมัดจำ</button>
+                    <button className="btn-link" onClick={() => openReturnModal(r)}>ตรวจสอบการคืน + คิดค่าปรับ</button>
+                  )}
+                  {r.status === 'returned' && r.refund_status === 'pending' && (
+                    <button className="btn-link" onClick={() => openRefundModal(r)}>บันทึกโอนมัดจำคืน</button>
                   )}
                 </td>
               </tr>
@@ -211,6 +282,63 @@ export default function AdminBorrowRecords() {
           <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>ถัดไป</button>
         </div>
       </div>
+
+      {returnRecord && (() => {
+        const deposit = Number(returnRecord.deposit_amount);
+        const fee = Math.min(Math.max(Number(lateFeeInput) || 0, 0), deposit);
+        return (
+          <div className="modal-backdrop" onClick={() => setReturnRecord(null)}>
+            <form className="modal-box" onClick={e => e.stopPropagation()} onSubmit={handleConfirmReturn}>
+              <h3>ตรวจสอบการคืนหนังสือ</h3>
+              <p className="muted" style={{ marginBottom: 8 }}>{returnRecord.title} — {returnRecord.full_name}</p>
+              {returnRecord.return_proof_image && (
+                <img src={returnRecord.return_proof_image} alt="หลักฐานการคืน" style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 10, border: '1px solid var(--border)' }} />
+              )}
+              <div className="summary-row"><span className="label">ค่ามัดจำ</span><span className="value">{deposit.toLocaleString()} บาท</span></div>
+              <div className="summary-row">
+                <span className="label">เกินกำหนดคืน</span>
+                <span className="value">{returnRecord.late_days > 0 ? `${returnRecord.late_days} วัน × ${returnRecord.late_fee_per_day} บาท` : 'ไม่เกินกำหนด'}</span>
+              </div>
+              <label>ค่าปรับที่หักจากมัดจำ (บาท) — แก้ไขได้ ใส่ 0 เพื่อยกเว้น</label>
+              <input type="number" min="0" max={deposit} step="0.01" value={lateFeeInput} onChange={e => setLateFeeInput(e.target.value)} />
+              <div className="summary-row"><span className="label">ยอดที่ต้องโอนคืนลูกค้า</span><span className="value"><b>{(deposit - fee).toLocaleString()} บาท</b></span></div>
+              <p className="muted" style={{ fontSize: 12.5, margin: '6px 0' }}>
+                บัญชีรับเงินคืน: {returnRecord.refund_account_info || 'ลูกค้ายังไม่ได้ระบุ (รายการเก่า) — ติดต่อลูกค้าเพื่อขอบัญชี'}
+              </p>
+              <p className="muted" style={{ fontSize: 12.5, margin: '0 0 6px' }}>ค่าปรับนับถึงวันที่ลูกค้าแจ้งคืนในระบบ ไม่นับช่วงที่รอแอดมินตรวจสอบ</p>
+              {returnError && <p className="error-text">{returnError}</p>}
+              <div className="btn-row">
+                <button type="button" className="btn-outline" onClick={() => setReturnRecord(null)}>ยกเลิก</button>
+                <button className="btn-primary" disabled={busy}>{busy ? 'กำลังบันทึก...' : 'ยืนยันการคืน'}</button>
+              </div>
+            </form>
+          </div>
+        );
+      })()}
+
+      {refundRecord && (
+        <div className="modal-backdrop" onClick={() => setRefundRecord(null)}>
+          <form className="modal-box" onClick={e => e.stopPropagation()} onSubmit={handleMarkRefunded}>
+            <h3>บันทึกการโอนมัดจำคืน</h3>
+            <p className="muted" style={{ marginBottom: 8 }}>{refundRecord.title} — {refundRecord.full_name}</p>
+            <div className="summary-row"><span className="label">ยอดที่ต้องโอน</span><span className="value"><b>{Number(refundRecord.refund_amount).toLocaleString()} บาท</b></span></div>
+            {Number(refundRecord.late_fee) > 0 && (
+              <p className="muted" style={{ fontSize: 12.5, margin: '4px 0' }}>มัดจำ {Number(refundRecord.deposit_amount).toLocaleString()} บาท หักค่าปรับ {Number(refundRecord.late_fee).toLocaleString()} บาท</p>
+            )}
+            <p style={{ fontSize: 14, lineHeight: 1.7, margin: '8px 0' }}>
+              <b>โอนเข้าบัญชี:</b><br />{refundRecord.refund_account_info || 'ลูกค้ายังไม่ได้ระบุบัญชี — ติดต่อลูกค้าเพื่อขอบัญชีก่อน'}
+            </p>
+            <label>เลขอ้างอิง / หมายเหตุการโอน (ไม่บังคับ)</label>
+            <input placeholder="เช่น เวลาโอน หรือเลขอ้างอิงจากสลิป" value={refundRef} onChange={e => setRefundRef(e.target.value)} />
+            <p className="muted" style={{ fontSize: 12.5, margin: '6px 0' }}>โอนเงินผ่านแอปธนาคารของร้านก่อน แล้วค่อยกดบันทึก ระบบจะส่งอีเมลแจ้งลูกค้าว่าโอนแล้ว</p>
+            {refundError && <p className="error-text">{refundError}</p>}
+            <div className="btn-row">
+              <button type="button" className="btn-outline" onClick={() => setRefundRecord(null)}>ยกเลิก</button>
+              <button className="btn-primary" disabled={busy}>{busy ? 'กำลังบันทึก...' : 'บันทึกว่าโอนแล้ว'}</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {addressRecord && (
         <div className="modal-backdrop" onClick={() => setAddressRecord(null)}>

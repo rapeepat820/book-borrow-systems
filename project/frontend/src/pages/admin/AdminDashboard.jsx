@@ -16,6 +16,7 @@ export default function AdminDashboard() {
   const [recent, setRecent] = useState([]);
   const [sending, setSending] = useState(false);
   const [reminderResult, setReminderResult] = useState('');
+  const [sendingOverdue, setSendingOverdue] = useState(false);
 
   useEffect(() => {
     api.adminDashboard().then(setStats);
@@ -32,6 +33,19 @@ export default function AdminDashboard() {
       setReminderResult(err.message);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleSendOverdue() {
+    setSendingOverdue(true);
+    setReminderResult('');
+    try {
+      const result = await api.adminSendOverdueReminders();
+      setReminderResult(result.message);
+    } catch (err) {
+      setReminderResult(err.message);
+    } finally {
+      setSendingOverdue(false);
     }
   }
 
@@ -62,11 +76,11 @@ export default function AdminDashboard() {
           <h3>{stats.totalMembers}</h3>
           <p>ลูกค้าใหม่</p>
         </div>
-        <div className="card stat-card warn">
+        <Link to="/admin/borrow-records?filter=overdue" className="card stat-card link warn">
           <div className="stat-card-icon"><AlertIcon size={20} /></div>
           <h3>{stats.overdueCount}</h3>
           <p>เกินกำหนดคืน</p>
-        </div>
+        </Link>
       </div>
 
       <div className="section-title" style={{ margin: '8px 0 12px' }}>รายการที่ต้องดำเนินการ</div>
@@ -86,6 +100,11 @@ export default function AdminDashboard() {
           <h3>{stats.pendingReturnCheck}</h3>
           <p>รอตรวจสอบการคืนหนังสือ</p>
         </Link>
+        <Link to="/admin/borrow-records?filter=refund_pending" className="card stat-card link warn">
+          <div className="stat-card-icon"><RepeatIcon size={20} /></div>
+          <h3>{stats.pendingRefunds ?? 0}</h3>
+          <p>รอโอนเงินมัดจำคืนลูกค้า</p>
+        </Link>
       </div>
 
       <div className="card">
@@ -94,9 +113,14 @@ export default function AdminDashboard() {
             <h3 style={{ margin: 0 }}>อีเมลแจ้งเตือนใกล้ครบกำหนดคืน</h3>
             <p className="muted" style={{ margin: '2px 0 0' }}>ปกติระบบส่งอัตโนมัติทุกวัน 08:00 น. — กดปุ่มนี้เพื่อสั่งส่งทันที (ใช้ทดสอบ)</p>
           </div>
-          <button className="btn-secondary auto" onClick={handleSendReminders} disabled={sending}>
-            {sending ? 'กำลังส่ง...' : 'ส่งอีเมลแจ้งเตือนตอนนี้'}
-          </button>
+          <div className="btn-row">
+            <button className="btn-secondary auto" onClick={handleSendReminders} disabled={sending}>
+              {sending ? 'กำลังส่ง...' : 'ส่งอีเมลแจ้งเตือนตอนนี้'}
+            </button>
+            <button className="btn-secondary auto" onClick={handleSendOverdue} disabled={sendingOverdue}>
+              {sendingOverdue ? 'กำลังส่ง...' : 'ส่งอีเมลเตือนเกินกำหนด'}
+            </button>
+          </div>
         </div>
         {reminderResult && <p className="pill pill-blue" style={{ display: 'block', padding: 10, marginTop: 4 }}>{reminderResult}</p>}
       </div>
