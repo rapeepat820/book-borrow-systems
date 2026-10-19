@@ -31,6 +31,9 @@ const { runAutoSetup } = require('./utils/bookAutoSetup');
 
 const app = express();
 
+// อยู่หลัง proxy ของ Railway: ให้ rate limit เห็น IP จริงของผู้ใช้ (ไม่ใช่ IP ของ proxy)
+app.set('trust proxy', 1);
+
 // helmet: ตั้งค่า HTTP security headers พื้นฐาน (X-Content-Type-Options, X-Frame-Options ฯลฯ)
 // ปิด contentSecurityPolicy ไว้ก่อนเพื่อไม่ให้บล็อกการโหลดไฟล์ static ของ frontend โดยไม่ได้ตั้งใจ
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
