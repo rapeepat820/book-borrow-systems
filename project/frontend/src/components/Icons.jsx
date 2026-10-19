@@ -75,3 +75,13 @@ export const HeartIcon = (p) => <Svg {...p}><path d="M12 20s-7.5-4.6-7.5-10A4.3 
 export const BellIcon = (p) => <Svg {...p}><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2h-15L6 16.5Z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></Svg>;
 
 export const FilterIcon = (p) => <Svg {...p}><path d="M4 6h16M7 12h10M10 18h4" /></Svg>;
+
+export const MessageIcon = (p) => <Svg {...p}><path d="M4 5.5h16v10.5H9.5L5.5 19.5V16H4V5.5Z" /><path d="M8 9.5h8" /><path d="M8 12.5h5" /></Svg>;
+
+export const PhoneIcon = (p) => <Svg {...p}><path d="M6.5 4h3l1.5 4-2 1.3a11 11 0 0 0 5.7 5.7l1.3-2 4 1.5v3a2 2 0 0 1-2 2A14.5 14.5 0 0 1 4.5 6a2 2 0 0 1 2-2Z" /></Svg>;
+
+export const MailIcon = (p) => <Svg {...p}><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4 7.5 8 6 8-6" /></Svg>;
+
+export const MapPinIcon = (p) => <Svg {...p}><path d="M12 20.5s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z" /><circle cx="12" cy="10.5" r="2.2" /></Svg>;
+
+export const ClockIcon = (p) => <Svg {...p}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Svg>;
