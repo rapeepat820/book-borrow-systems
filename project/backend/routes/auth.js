@@ -63,52 +63,99 @@ router.post('/login', authLimiter, async (req, res) => {
 });
 
 // ------------------------------------------------------------
-// ลืมรหัสผ่าน: ส่งลิงก์ "สร้างรหัสผ่านใหม่" ไปยังอีเมล
+// ลืมรหัสผ่านด้วยรหัส OTP 6 หลักทางอีเมล
+//  - OTP หมดอายุใน 10 นาที, กรอกผิดได้ไม่เกิน 5 ครั้ง, ขอใหม่ได้ทุก 60 วินาที
+//  - เก็บเฉพาะค่า hash ของ OTP ในตาราง password_reset_otps (ไม่เก็บเลขจริง)
 // ------------------------------------------------------------
+const OTP_TTL_MIN = 10;
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_RESEND_SECONDS = 60;
+
+function hashOtp(userId, otp) {
+  return crypto.createHmac('sha256', SECRET).update(`${userId}:${otp}`).digest('hex');
+}
+
+function safeEqualHex(a, b) {
+  const x = Buffer.from(a, 'hex');
+  const y = Buffer.from(b, 'hex');
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+
 router.post('/forgot-password', authLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
-    const [rows] = await pool.query('SELECT id, full_name FROM users WHERE email = ?', [email]);
-    // ตอบสำเร็จเสมอแม้ไม่พบอีเมล เพื่อไม่ให้ใช้ตรวจสอบว่าอีเมลมีอยู่ในระบบหรือไม่
-    if (rows.length > 0) {
-      const token = crypto.randomBytes(32).toString('hex');
-      const expires = new Date(Date.now() + 60 * 60 * 1000); // หมดอายุใน 1 ชั่วโมง
-      await pool.query('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
-        [token, expires, rows[0].id]);
-      const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
-      if (!isMailConfigured()) {
-        // ยังไม่ได้ตั้งค่า SMTP: พิมพ์ลิงก์ไว้ใน terminal ของเซิร์ฟเวอร์ (ไม่ส่งกลับไปที่หน้าเว็บ เพื่อความปลอดภัย) แล้วแจ้งผู้ใช้ตามจริง
-        console.log(`[forgot-password] SMTP ยังไม่ได้ตั้งค่า — ลิงก์รีเซ็ตรหัสผ่านของ ${email}: ${resetLink}`);
-        return res.status(503).json({ message: 'ระบบอีเมลยังไม่ได้ตั้งค่า กรุณาติดต่อผู้ดูแลระบบ' });
-      }
-      await sendMail(email, 'สร้างรหัสผ่านใหม่ - RP Bookstore', `
-        <p>สวัสดีคุณ ${rows[0].full_name},</p>
-        <p>กดลิงก์ด้านล่างเพื่อสร้างรหัสผ่านใหม่ (ลิงก์นี้ใช้ได้ภายใน 1 ชั่วโมง)</p>
-        <p><a href="${resetLink}">${resetLink}</a></p>
-        <p>หากคุณไม่ได้เป็นผู้ขอ สามารถเพิกเฉยอีเมลนี้ได้</p>
-      `);
+    const email = String(req.body.email || '').trim();
+    if (!email) return res.status(400).json({ message: 'กรุณากรอกอีเมล' });
+    if (!isMailConfigured()) {
+      return res.status(503).json({ message: 'ระบบอีเมลยังไม่ได้ตั้งค่า กรุณาติดต่อผู้ดูแลระบบ' });
     }
-    res.json({ message: 'หากอีเมลนี้อยู่ในระบบ เราได้ส่งลิงก์สำหรับสร้างรหัสผ่านใหม่ไปให้แล้ว' });
+    const genericOk = { message: 'หากอีเมลนี้อยู่ในระบบ เราได้ส่งรหัส OTP 6 หลักไปให้แล้ว (หมดอายุใน ' + OTP_TTL_MIN + ' นาที)' };
+
+    const [rows] = await pool.query('SELECT id, full_name FROM users WHERE email = ?', [email]);
+    // ตอบเหมือนกันเสมอแม้ไม่พบอีเมล เพื่อไม่ให้ใช้เดาว่าอีเมลไหนมีบัญชีอยู่
+    if (rows.length === 0) return res.json(genericOk);
+    const user = rows[0];
+
+    // กันขอ OTP รัวๆ (สแปมอีเมล)
+    const [[recent]] = await pool.query(
+      'SELECT COUNT(*) AS n FROM password_reset_otps WHERE user_id = ? AND created_at > (NOW() - INTERVAL ? SECOND)',
+      [user.id, OTP_RESEND_SECONDS]);
+    if (recent.n > 0) {
+      return res.status(429).json({ message: `กรุณารอ ${OTP_RESEND_SECONDS} วินาทีก่อนขอรหัสใหม่` });
+    }
+
+    const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    await pool.query('DELETE FROM password_reset_otps WHERE user_id = ?', [user.id]);
+    await pool.query(
+      'INSERT INTO password_reset_otps (user_id, otp_hash, expires_at) VALUES (?, ?, NOW() + INTERVAL ? MINUTE)',
+      [user.id, hashOtp(user.id, otp), OTP_TTL_MIN]);
+
+    await sendMail(email, 'รหัส OTP สำหรับตั้งรหัสผ่านใหม่ - RP Bookstore', `
+      <p>สวัสดีคุณ ${user.full_name},</p>
+      <p>รหัส OTP สำหรับตั้งรหัสผ่านใหม่ของคุณคือ</p>
+      <p style="font-size:32px;font-weight:bold;letter-spacing:8px;margin:16px 0">${otp}</p>
+      <p>รหัสนี้ใช้ได้ภายใน ${OTP_TTL_MIN} นาที และใช้ได้ครั้งเดียว อย่าบอกรหัสนี้กับผู้อื่น</p>
+      <p>หากคุณไม่ได้เป็นผู้ขอ สามารถเพิกเฉยอีเมลนี้ได้</p>
+    `);
+    res.json(genericOk);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'ไม่สามารถส่งอีเมลได้' });
+    res.status(500).json({ message: 'ไม่สามารถส่งอีเมลได้ กรุณาลองใหม่อีกครั้ง' });
   }
 });
 
-// ------------------------------------------------------------
-// สร้างรหัสผ่านใหม่ด้วย token ที่ได้รับทางอีเมล
-// ------------------------------------------------------------
-router.post('/reset-password', async (req, res) => {
+// ตรวจ OTP แล้วตั้งรหัสผ่านใหม่
+router.post('/reset-password', authLimiter, async (req, res) => {
   try {
-    const { token, password } = req.body;
-    const [rows] = await pool.query(
-      'SELECT id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()', [token]);
-    if (rows.length === 0) {
-      return res.status(400).json({ message: 'ลิงก์หมดอายุหรือไม่ถูกต้อง กรุณาขอลิงก์ใหม่อีกครั้ง' });
+    const email = String(req.body.email || '').trim();
+    const otp = String(req.body.otp || '').trim();
+    const password = String(req.body.password || '');
+    const invalid = { message: 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่อีกครั้ง' };
+
+    if (!email || !/^\d{6}$/.test(otp)) return res.status(400).json(invalid);
+    if (password.length < 6) return res.status(400).json({ message: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร' });
+
+    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (users.length === 0) return res.status(400).json(invalid);
+    const userId = users[0].id;
+
+    const [otps] = await pool.query(
+      'SELECT id, otp_hash, attempts FROM password_reset_otps WHERE user_id = ? AND expires_at > NOW() ORDER BY id DESC LIMIT 1',
+      [userId]);
+    if (otps.length === 0) return res.status(400).json(invalid);
+    const rec = otps[0];
+
+    if (rec.attempts >= OTP_MAX_ATTEMPTS) {
+      await pool.query('DELETE FROM password_reset_otps WHERE id = ?', [rec.id]);
+      return res.status(429).json({ message: 'กรอกรหัสผิดเกินกำหนด กรุณาขอรหัสใหม่อีกครั้ง' });
     }
+    if (!safeEqualHex(rec.otp_hash, hashOtp(userId, otp))) {
+      await pool.query('UPDATE password_reset_otps SET attempts = attempts + 1 WHERE id = ?', [rec.id]);
+      return res.status(400).json({ message: 'รหัส OTP ไม่ถูกต้อง' });
+    }
+
     const hash = await bcrypt.hash(password, 10);
-    await pool.query('UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
-      [hash, rows[0].id]);
+    await pool.query('UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?', [hash, userId]);
+    await pool.query('DELETE FROM password_reset_otps WHERE user_id = ?', [userId]);
     res.json({ message: 'ตั้งรหัสผ่านใหม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง' });
   } catch (err) {
     console.error(err);
