@@ -5,7 +5,8 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { uploadBookCover, useCloudinary } = require('../middleware/upload');
 const { lookupBook } = require('../utils/bookLookup');
 const { runAutoSetup, getStatus: autoFillStatus } = require('../utils/bookAutoSetup');
-const { sendMail, dueDateReminderTemplate, shippedTemplate, returnConfirmedTemplate, refundSentTemplate } = require('../utils/mailer');
+const { sendMail, dueDateReminderTemplate, shippedTemplate, returnConfirmedTemplate, refundSentTemplate, contactReplyTemplate } = require('../utils/mailer');
+const { CONTACT_FIELDS, getContactSettings } = require('./contact');
 const { calcDueDate, calcShippingFee, calcDeposit, calcLateFee, LATE_DAYS_SQL, LATE_FEE_GRACE_DAYS, attachLateInfo } = require('../utils/calcBorrow');
 const { sendDueReminders, sendOverdueNotices } = require('../utils/reminderCron');
 
@@ -30,9 +31,14 @@ router.get('/dashboard', async (req, res) => {
   // รายการที่คืนหนังสือแล้ว แต่ยังไม่ได้โอนเงินมัดจำคืนให้ลูกค้า
   const [[{ pendingRefunds }]] = await pool.query(
     "SELECT COUNT(*) AS pendingRefunds FROM borrow_records WHERE refund_status = 'pending'");
+  // ข้อความติดต่อใหม่ที่ยังไม่ได้ตอบ (ถ้ายังไม่ได้รัน migration v9 ให้นับเป็น 0 แทนที่จะทำให้แดชบอร์ดพัง)
+  let newMessages = 0;
+  try {
+    [[{ newMessages }]] = await pool.query("SELECT COUNT(*) AS newMessages FROM contact_messages WHERE status = 'new'");
+  } catch (err) { /* ตารางยังไม่มี */ }
   res.json({
     totalBooks, totalMembers, activeBorrows, overdueCount,
-    pendingPaymentVerification, pendingExtendVerification, pendingReturnCheck, pendingRefunds
+    pendingPaymentVerification, pendingExtendVerification, pendingReturnCheck, pendingRefunds, newMessages
   });
 });
 
@@ -548,6 +554,92 @@ router.put('/borrow-records/:id/mark-refunded', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'ไม่สามารถบันทึกการโอนคืนได้' });
+  }
+});
+
+// ================= ข้อความติดต่อ + ตั้งค่าช่องทางติดต่อ =================
+router.get('/contact-messages', async (req, res) => {
+  try {
+    const { status } = req.query;
+    let sql = `SELECT cm.*, br.id AS record_id, b.title AS record_title
+               FROM contact_messages cm
+               LEFT JOIN borrow_records br ON cm.borrow_record_id = br.id
+               LEFT JOIN books b ON br.book_id = b.id`;
+    const params = [];
+    if (['new', 'replied', 'closed'].includes(status)) { sql += ' WHERE cm.status = ?'; params.push(status); }
+    sql += ' ORDER BY (cm.status = \'new\') DESC, cm.created_at DESC LIMIT 200';
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'ไม่สามารถโหลดข้อความได้ (ลองรัน migration v9 แล้วหรือยัง)' });
+  }
+});
+
+// ตอบกลับลูกค้าทางอีเมล + บันทึกคำตอบไว้ให้ลูกค้าเห็นในหน้า "ติดต่อเจ้าหน้าที่"
+router.put('/contact-messages/:id/reply', async (req, res) => {
+  try {
+    const reply = String((req.body && req.body.reply) || '').trim().slice(0, 3000);
+    if (reply.length < 2) return res.status(400).json({ message: 'กรุณาพิมพ์ข้อความตอบกลับ' });
+    const [[msg]] = await pool.query('SELECT * FROM contact_messages WHERE id = ?', [req.params.id]);
+    if (!msg) return res.status(404).json({ message: 'ไม่พบข้อความ' });
+
+    await pool.query(
+      "UPDATE contact_messages SET admin_reply = ?, status = 'replied', replied_at = NOW() WHERE id = ?", [reply, req.params.id]);
+
+    let emailed = false;
+    try {
+      emailed = await sendMail(msg.email, `ตอบกลับ: ${msg.subject}`, contactReplyTemplate(msg.name, msg.subject, msg.message, reply));
+    } catch (err) {
+      console.error('[contact] ส่งอีเมลตอบกลับไม่สำเร็จ:', err.message);
+    }
+    res.json({
+      message: emailed ? 'ตอบกลับและส่งอีเมลถึงลูกค้าแล้ว' : 'บันทึกคำตอบแล้ว แต่ส่งอีเมลไม่สำเร็จ (ลูกค้ายังเห็นคำตอบในหน้าติดต่อเจ้าหน้าที่ หากล็อกอินอยู่)',
+      emailed
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'ไม่สามารถบันทึกคำตอบได้' });
+  }
+});
+
+router.put('/contact-messages/:id/status', async (req, res) => {
+  const status = req.body && req.body.status;
+  if (!['new', 'replied', 'closed'].includes(status)) return res.status(400).json({ message: 'สถานะไม่ถูกต้อง' });
+  await pool.query('UPDATE contact_messages SET status = ? WHERE id = ?', [status, req.params.id]);
+  res.json({ message: 'อัปเดตสถานะแล้ว' });
+});
+
+router.get('/contact-settings', async (req, res) => {
+  try {
+    res.json(await getContactSettings());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'ไม่สามารถโหลดการตั้งค่าได้ (ลองรัน migration v9 แล้วหรือยัง)' });
+  }
+});
+
+router.put('/contact-settings', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const limits = { shop_name: 100, phone: 40, line_id: 60, line_url: 255, email: 150, facebook_url: 255, address: 500, hours: 255, note: 500 };
+    for (const key of CONTACT_FIELDS) {
+      if (body[key] === undefined) continue;
+      const value = String(body[key]).trim().slice(0, limits[key]);
+      if (['line_url', 'facebook_url'].includes(key) && value && !/^https?:\/\//i.test(value)) {
+        return res.status(400).json({ message: 'ลิงก์ต้องขึ้นต้นด้วย http:// หรือ https://' });
+      }
+      if (key === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        return res.status(400).json({ message: 'รูปแบบอีเมลร้านไม่ถูกต้อง' });
+      }
+      await pool.query(
+        'INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)',
+        [key, value]);
+    }
+    res.json({ message: 'บันทึกช่องทางติดต่อเรียบร้อย' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'ไม่สามารถบันทึกการตั้งค่าได้' });
   }
 });
 
