@@ -7,6 +7,7 @@ const { SECRET, requireAuth } = require('../middleware/auth');
 const { sendMail, isMailConfigured } = require('../utils/mailer');
 const { authLimiter } = require('../middleware/rateLimiter');
 const { buildAddressText } = require('../utils/address');
+const { parseRefundAccount } = require('../utils/refundAccount');
 
 const router = express.Router();
 
@@ -187,7 +188,8 @@ router.post('/change-password', requireAuth, async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   const [[user]] = await pool.query(
     `SELECT id, full_name, email, phone, address,
-            address_detail, subdistrict, district, province, postal_code, role
+            address_detail, subdistrict, district, province, postal_code, role,
+            refund_method, refund_bank, refund_account_no, refund_account_name
      FROM users WHERE id = ?`, [req.user.id]);
   res.json(user);
 });
@@ -195,6 +197,15 @@ router.get('/me', requireAuth, async (req, res) => {
 router.put('/me', requireAuth, async (req, res) => {
   const { full_name, phone, address_detail, subdistrict, district, province, postal_code } = req.body;
   const address = buildAddressText({ address_detail, subdistrict, district, province, postal_code });
+
+  // บัญชีรับเงินมัดจำคืน: อัปเดตเฉพาะเมื่อฟอร์มส่งมา และต้องกรอกถูกต้องครบ (ตรวจก่อนบันทึกอะไรทั้งนั้น)
+  let refund = null;
+  if (req.body.refund_method) {
+    const parsed = parseRefundAccount(req.body);
+    if (!parsed.ok) return res.status(400).json({ message: parsed.message });
+    refund = parsed.data;
+  }
+
   await pool.query(
     `UPDATE users
      SET full_name = ?, phone = ?, address = ?, address_detail = ?, subdistrict = ?, district = ?, province = ?, postal_code = ?
@@ -203,6 +214,11 @@ router.put('/me', requireAuth, async (req, res) => {
      address_detail || null, subdistrict || null, district || null, province || null, postal_code || null,
      req.user.id]
   );
+  if (refund) {
+    await pool.query(
+      'UPDATE users SET refund_method = ?, refund_bank = ?, refund_account_no = ?, refund_account_name = ? WHERE id = ?',
+      [refund.refund_method, refund.refund_bank, refund.refund_account_no, refund.refund_account_name, req.user.id]);
+  }
   res.json({ message: 'บันทึกข้อมูลโปรไฟล์สำเร็จ' });
 });
 

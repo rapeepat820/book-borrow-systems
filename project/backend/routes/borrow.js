@@ -2,8 +2,10 @@ const express = require('express');
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
 const { uploadReturnProof, uploadPaymentSlip, uploadExtendSlip, useCloudinary } = require('../middleware/upload');
-const { calcDueDate, calcShippingFee, calcDeposit, calcExtendFee } = require('../utils/calcBorrow');
+const { calcDueDate, calcShippingFee, calcDeposit, calcExtendFee, LATE_DAYS_SQL, attachLateInfo } = require('../utils/calcBorrow');
+const { parseRefundAccount, formatRefundAccount } = require('../utils/refundAccount');
 const { sendMail, returnRequestedTemplate } = require('../utils/mailer');
+const { runSlipCheck, discardFile } = require('../utils/slipVerify');
 
 const router = express.Router();
 
@@ -89,14 +91,14 @@ router.post('/', requireAuth, async (req, res) => {
 // ------------------------------------------------------------
 router.get('/my', requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT br.*, b.title, b.cover_image, b.book_type_id, sc.name AS shipping_company_name, sc.tracking_url
+    `SELECT br.*, ${LATE_DAYS_SQL}, b.title, b.cover_image, b.book_type_id, sc.name AS shipping_company_name, sc.tracking_url
      FROM borrow_records br
      JOIN books b ON br.book_id = b.id
      JOIN shipping_companies sc ON br.shipping_company_id = sc.id
      WHERE br.user_id = ? ORDER BY br.created_at DESC`,
     [req.user.id]
   );
-  res.json(rows);
+  res.json(rows.map(attachLateInfo));
 });
 
 // ------------------------------------------------------------
@@ -104,13 +106,13 @@ router.get('/my', requireAuth, async (req, res) => {
 // ------------------------------------------------------------
 router.get('/:id', requireAuth, async (req, res) => {
   const [[record]] = await pool.query(
-    `SELECT br.*, b.title, b.cover_image, b.author, sc.name AS shipping_company_name, sc.tracking_url
+    `SELECT br.*, ${LATE_DAYS_SQL}, b.title, b.cover_image, b.author, sc.name AS shipping_company_name, sc.tracking_url
      FROM borrow_records br
      JOIN books b ON br.book_id = b.id
      JOIN shipping_companies sc ON br.shipping_company_id = sc.id
      WHERE br.id = ? AND br.user_id = ?`, [req.params.id, req.user.id]);
   if (!record) return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' });
-  res.json(record);
+  res.json(attachLateInfo(record));
 });
 
 // ------------------------------------------------------------
@@ -140,17 +142,49 @@ router.post('/:id/payment-slip', requireAuth, uploadPaymentSlip.single('slip_ima
 
     const [[record]] = await pool.query(
       'SELECT * FROM borrow_records WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-    if (!record) return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' });
+    if (!record) { await discardFile(req.file, useCloudinary); return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' }); }
     if (record.payment_status === 'paid') {
+      await discardFile(req.file, useCloudinary);
       return res.status(400).json({ message: 'รายการนี้ชำระเงินเรียบร้อยแล้ว' });
     }
 
+    // อ่าน QR บนสลิป + กันสลิปซ้ำ (+ ตรวจกับธนาคารถ้าตั้งค่า SlipOK ไว้)
+    const expectedAmount = Number(record.shipping_fee) + Number(record.deposit_amount);
+    let check;
+    try {
+      check = await runSlipCheck({
+        file: req.file, useCloudinary, recordId: record.id, purpose: 'borrow',
+        expectedAmount, createdAt: record.created_at
+      });
+    } catch (err) {
+      // ระบบตรวจสลิปพัง (เช่น ยังไม่ได้รัน migration v7) → ใช้วิธีเดิม ส่งให้แอดมินตรวจเอง ไม่ให้ลูกค้าติดขัด
+      console.error('[slip] ตรวจสลิปอัตโนมัติผิดพลาด ใช้การตรวจโดยแอดมินแทน:', err);
+      check = { outcome: 'pending_manual', message: 'แนบสลิปสำเร็จ รอเจ้าหน้าที่ตรวจสอบการชำระเงิน' };
+    }
+
+    if (check.outcome === 'rejected') {
+      await discardFile(req.file, useCloudinary);
+      return res.status(400).json({ message: check.message });
+    }
+
     const imagePath = useCloudinary ? req.file.path : `/uploads/payment-slips/${req.file.filename}`;
-    await pool.query(
-      `UPDATE borrow_records SET payment_slip_image = ?, payment_status = 'pending_verification' WHERE id = ?`,
-      [imagePath, req.params.id]
-    );
-    res.json({ message: 'แนบสลิปสำเร็จ รอเจ้าหน้าที่ตรวจสอบการชำระเงิน', slip_image: imagePath });
+    if (check.outcome === 'auto_verified') {
+      await pool.query(
+        `UPDATE borrow_records SET payment_slip_image = ?, payment_status = 'paid', paid_at = NOW()
+         WHERE id = ? AND payment_status <> 'paid'`,
+        [imagePath, req.params.id]
+      );
+    } else {
+      await pool.query(
+        `UPDATE borrow_records SET payment_slip_image = ?, payment_status = 'pending_verification' WHERE id = ?`,
+        [imagePath, req.params.id]
+      );
+    }
+    res.json({
+      message: check.outcome === 'auto_verified' ? check.message : 'แนบสลิปสำเร็จ รอเจ้าหน้าที่ตรวจสอบการชำระเงิน',
+      slip_image: imagePath,
+      auto_verified: check.outcome === 'auto_verified'
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'ไม่สามารถแนบสลิปได้' });
@@ -222,17 +256,50 @@ router.post('/:id/extend-payment-slip', requireAuth, uploadExtendSlip.single('sl
 
     const [[record]] = await pool.query(
       'SELECT * FROM borrow_records WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-    if (!record) return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' });
+    if (!record) { await discardFile(req.file, useCloudinary); return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' }); }
     if (record.extend_status !== 'pending') {
+      await discardFile(req.file, useCloudinary);
       return res.status(400).json({ message: 'ไม่มีคำขอต่ออายุยืมที่รอชำระเงิน' });
     }
 
+    let check;
+    try {
+      check = await runSlipCheck({
+        file: req.file, useCloudinary, recordId: record.id, purpose: 'extend',
+        expectedAmount: Number(record.extend_fee), createdAt: null
+      });
+    } catch (err) {
+      console.error('[slip] ตรวจสลิปอัตโนมัติผิดพลาด ใช้การตรวจโดยแอดมินแทน:', err);
+      check = { outcome: 'pending_manual', message: 'แนบสลิปสำเร็จ รอเจ้าหน้าที่ตรวจสอบการชำระค่าธรรมเนียมต่ออายุ' };
+    }
+
+    if (check.outcome === 'rejected') {
+      await discardFile(req.file, useCloudinary);
+      return res.status(400).json({ message: check.message });
+    }
+
     const imagePath = useCloudinary ? req.file.path : `/uploads/extend-payment-slips/${req.file.filename}`;
-    await pool.query(
-      `UPDATE borrow_records SET extend_payment_slip_image = ?, extend_payment_status = 'pending_verification' WHERE id = ?`,
-      [imagePath, req.params.id]
-    );
-    res.json({ message: 'แนบสลิปสำเร็จ รอเจ้าหน้าที่ตรวจสอบการชำระค่าธรรมเนียมต่ออายุ', slip_image: imagePath });
+    if (check.outcome === 'auto_verified') {
+      // อนุมัติต่ออายุให้อัตโนมัติ — ทำเหมือนที่แอดมินกดยืนยัน (บวกวันเข้ากำหนดคืนทันที)
+      await pool.query(
+        `UPDATE borrow_records
+         SET extend_payment_slip_image = ?, due_date = DATE_ADD(due_date, INTERVAL ? DAY),
+             extend_status = 'approved', extend_payment_status = 'paid', extend_paid_at = NOW()
+         WHERE id = ? AND extend_status = 'pending'`,
+        [imagePath, record.extend_requested_days, req.params.id]
+      );
+    } else {
+      await pool.query(
+        `UPDATE borrow_records SET extend_payment_slip_image = ?, extend_payment_status = 'pending_verification' WHERE id = ?`,
+        [imagePath, req.params.id]
+      );
+    }
+    res.json({
+      message: check.outcome === 'auto_verified' ? 'ตรวจสอบสลิปสำเร็จ ต่ออายุยืมเรียบร้อยแล้ว'
+        : 'แนบสลิปสำเร็จ รอเจ้าหน้าที่ตรวจสอบการชำระค่าธรรมเนียมต่ออายุ',
+      slip_image: imagePath,
+      auto_verified: check.outcome === 'auto_verified'
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'ไม่สามารถแนบสลิปได้' });
@@ -246,6 +313,7 @@ router.post('/:id/extend-payment-slip', requireAuth, uploadExtendSlip.single('sl
 router.post('/:id/return', requireAuth, uploadReturnProof.single('proof_image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'กรุณาแนบรูปภาพหลักฐานการคืนหนังสือ' });
+    const fail = async (status, message) => { await discardFile(req.file, useCloudinary); return res.status(status).json({ message }); };
 
     const [[record]] = await pool.query(
       `SELECT br.*, b.title, u.full_name, u.email
@@ -254,22 +322,34 @@ router.post('/:id/return', requireAuth, uploadReturnProof.single('proof_image'),
        JOIN users u ON br.user_id = u.id
        WHERE br.id = ? AND br.user_id = ?`, [req.params.id, req.user.id]
     );
-    if (!record) return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' });
+    if (!record) return fail(404, 'ไม่พบรายการยืมนี้');
     if (!['borrowing', 'pending_shipment'].includes(record.status)) {
-      return res.status(400).json({ message: 'รายการนี้ไม่สามารถแจ้งคืนได้' });
+      return fail(400, 'รายการนี้ไม่สามารถแจ้งคืนได้');
     }
+
+    // ต้องระบุบัญชีรับเงินมัดจำคืน (เก็บสำเนาไว้กับรายการนี้ กันโปรไฟล์ถูกแก้ภายหลัง)
+    const parsed = parseRefundAccount(req.body);
+    if (!parsed.ok) return fail(400, parsed.message);
+    const refund = parsed.data;
 
     const imagePath = useCloudinary ? req.file.path : `/uploads/return-proofs/${req.file.filename}`;
     await pool.query(
-      `UPDATE borrow_records SET return_proof_image = ?, status = 'return_requested', return_date = CURDATE() WHERE id = ?`,
-      [imagePath, req.params.id]
+      `UPDATE borrow_records
+       SET return_proof_image = ?, status = 'return_requested', return_date = CURDATE(), refund_account_info = ?
+       WHERE id = ?`,
+      [imagePath, formatRefundAccount(refund), req.params.id]
     );
+    // จำบัญชีนี้ไว้ในโปรไฟล์ ครั้งหน้าจะเติมให้อัตโนมัติ
+    await pool.query(
+      'UPDATE users SET refund_method = ?, refund_bank = ?, refund_account_no = ?, refund_account_name = ? WHERE id = ?',
+      [refund.refund_method, refund.refund_bank, refund.refund_account_no, refund.refund_account_name, req.user.id]
+    ).catch(err => console.error('[return] บันทึกบัญชีรับเงินคืนลงโปรไฟล์ไม่สำเร็จ:', err.message));
 
     sendMail(record.email, 'ได้รับแจ้งคืนหนังสือของคุณแล้ว',
       returnRequestedTemplate(record.full_name, record.title))
       .catch(err => console.error('[mailer] return-requested error:', err));
 
-    res.json({ message: 'แจ้งคืนหนังสือสำเร็จ รอแอดมินตรวจสอบและคืนเงินมัดจำ', proof_image: imagePath });
+    res.json({ message: 'แจ้งคืนหนังสือสำเร็จ รอแอดมินตรวจสอบและโอนเงินมัดจำคืน', proof_image: imagePath });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'ไม่สามารถแจ้งคืนหนังสือได้' });

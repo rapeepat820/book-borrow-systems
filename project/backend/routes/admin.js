@@ -5,9 +5,9 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { uploadBookCover, useCloudinary } = require('../middleware/upload');
 const { lookupBook } = require('../utils/bookLookup');
 const { runAutoSetup, getStatus: autoFillStatus } = require('../utils/bookAutoSetup');
-const { sendMail, dueDateReminderTemplate, shippedTemplate, returnConfirmedTemplate } = require('../utils/mailer');
-const { calcDueDate, calcShippingFee, calcDeposit } = require('../utils/calcBorrow');
-const { sendDueReminders } = require('../utils/reminderCron');
+const { sendMail, dueDateReminderTemplate, shippedTemplate, returnConfirmedTemplate, refundSentTemplate } = require('../utils/mailer');
+const { calcDueDate, calcShippingFee, calcDeposit, calcLateFee, LATE_DAYS_SQL, LATE_FEE_GRACE_DAYS, attachLateInfo } = require('../utils/calcBorrow');
+const { sendDueReminders, sendOverdueNotices } = require('../utils/reminderCron');
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin); // ทุก endpoint ในไฟล์นี้ต้องเป็นแอดมิน
@@ -27,9 +27,12 @@ router.get('/dashboard', async (req, res) => {
     "SELECT COUNT(*) AS pendingExtendVerification FROM borrow_records WHERE extend_payment_status = 'pending_verification'");
   const [[{ pendingReturnCheck }]] = await pool.query(
     "SELECT COUNT(*) AS pendingReturnCheck FROM borrow_records WHERE status = 'return_requested'");
+  // รายการที่คืนหนังสือแล้ว แต่ยังไม่ได้โอนเงินมัดจำคืนให้ลูกค้า
+  const [[{ pendingRefunds }]] = await pool.query(
+    "SELECT COUNT(*) AS pendingRefunds FROM borrow_records WHERE refund_status = 'pending'");
   res.json({
     totalBooks, totalMembers, activeBorrows, overdueCount,
-    pendingPaymentVerification, pendingExtendVerification, pendingReturnCheck
+    pendingPaymentVerification, pendingExtendVerification, pendingReturnCheck, pendingRefunds
   });
 });
 
@@ -41,6 +44,17 @@ router.post('/send-due-reminders', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'ไม่สามารถส่งอีเมลแจ้งเตือนได้' });
+  }
+});
+
+// สั่งส่งอีเมลเตือน "เกินกำหนดคืนแล้ว" ทันที (ปกติรันอัตโนมัติทุกวัน 08:05 น. และไม่ส่งซ้ำภายใน 3 วัน)
+router.post('/send-overdue-reminders', async (req, res) => {
+  try {
+    const sent = await sendOverdueNotices();
+    res.json({ message: `ส่งอีเมลเตือนเกินกำหนดแล้ว ${sent} รายการ`, sent });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'ไม่สามารถส่งอีเมลเตือนเกินกำหนดได้' });
   }
 });
 
@@ -270,16 +284,23 @@ router.post('/members', async (req, res) => {
 // ================= Borrow Records Management =================
 router.get('/borrow-records', async (req, res) => {
   const { status } = req.query;
-  let sql = `SELECT br.*, b.title, u.full_name, u.email, sc.name AS shipping_company_name
+  let sql = `SELECT br.*, ${LATE_DAYS_SQL}, b.title, u.full_name, u.email, sc.name AS shipping_company_name
              FROM borrow_records br
              JOIN books b ON br.book_id = b.id
              JOIN users u ON br.user_id = u.id
              JOIN shipping_companies sc ON br.shipping_company_id = sc.id`;
   const params = [];
-  if (status) { sql += ' WHERE br.status = ?'; params.push(status); }
+  if (status === 'overdue') {
+    // "เกินกำหนดคืน" คำนวณจากวันที่ (ไม่ได้เก็บเป็นสถานะในฐานข้อมูล): กำลังยืมอยู่และเลยกำหนดแล้ว
+    sql += " WHERE br.status = 'borrowing' AND br.due_date < CURDATE()";
+  } else if (status === 'refund_pending') {
+    sql += " WHERE br.refund_status = 'pending'";
+  } else if (status) {
+    sql += ' WHERE br.status = ?'; params.push(status);
+  }
   sql += ' ORDER BY br.created_at DESC';
   const [rows] = await pool.query(sql, params);
-  res.json(rows);
+  res.json(rows.map(attachLateInfo));
 });
 
 // แอดมินสร้างรายการยืมใหม่ให้ลูกค้า (กรณีลูกค้าโทร/มาที่ร้านโดยตรง)
@@ -435,40 +456,98 @@ router.put('/borrow-records/:id/verify-extend-payment', async (req, res) => {
   res.json({ message: approve ? 'ยืนยันชำระค่าธรรมเนียมและต่ออายุยืมสำเร็จ' : 'ปฏิเสธสลิป ลูกค้าต้องแนบสลิปใหม่' });
 });
 
-// แอดมินตรวจสอบหลักฐานการคืน แล้วยืนยันคืนสำเร็จ + คืนเงินมัดจำ (ข้อ 3, 6)
+// แอดมินตรวจสอบหลักฐานการคืน แล้วยืนยันคืนสำเร็จ
+// คำนวณค่าปรับเกินกำหนด (นับถึงวันที่ลูกค้าแจ้งคืน) หักจากมัดจำ แล้วสร้างยอดที่ต้องโอนคืน (refund_status = 'pending')
+// แอดมินแก้ยอดค่าปรับเองได้ (เช่น ยกเว้นค่าปรับ) โดยส่ง late_fee มาใน body; การโอนเงินจริงบันทึกที่ /mark-refunded
 router.put('/borrow-records/:id/confirm-return', async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const [[record]] = await conn.query(
-      `SELECT br.*, b.title, u.full_name, u.email
+      `SELECT br.*, ${LATE_DAYS_SQL}, b.title, u.full_name, u.email
        FROM borrow_records br
        JOIN books b ON br.book_id = b.id
        JOIN users u ON br.user_id = u.id
        WHERE br.id = ? FOR UPDATE`, [req.params.id]);
     if (!record) { await conn.rollback(); return res.status(404).json({ message: 'ไม่พบรายการ' }); }
+    if (record.status === 'returned') {
+      await conn.rollback();
+      return res.status(400).json({ message: 'รายการนี้ยืนยันการคืนไปแล้ว' });
+    }
     if (!record.return_proof_image) {
       await conn.rollback();
       return res.status(400).json({ message: 'ลูกค้ายังไม่ได้แนบหลักฐานการคืน' });
     }
+
+    const deposit = Number(record.deposit_amount);
+    const lateDays = Math.max(Number(record.late_days_raw || 0) - LATE_FEE_GRACE_DAYS, 0);
+    let lateFee = calcLateFee(lateDays, deposit);
+    if (req.body && req.body.late_fee !== undefined && req.body.late_fee !== null && req.body.late_fee !== '') {
+      const custom = Number(req.body.late_fee);
+      if (!Number.isFinite(custom) || custom < 0 || custom > deposit) {
+        await conn.rollback();
+        return res.status(400).json({ message: `ค่าปรับต้องอยู่ระหว่าง 0 ถึง ${deposit} บาท (ไม่เกินค่ามัดจำ)` });
+      }
+      lateFee = Math.round(custom * 100) / 100;
+    }
+    const refundAmount = Math.round((deposit - lateFee) * 100) / 100;
+    const refundStatus = refundAmount > 0 ? 'pending' : 'none';
+
     await conn.query(
-      `UPDATE borrow_records SET status='returned', deposit_refunded=1, return_date=COALESCE(return_date, CURDATE()) WHERE id=?`,
-      [req.params.id]
+      `UPDATE borrow_records
+       SET status = 'returned', return_date = COALESCE(return_date, CURDATE()),
+           late_fee = ?, refund_amount = ?, refund_status = ?, deposit_refunded = 0
+       WHERE id = ?`,
+      [lateFee, refundAmount, refundStatus, req.params.id]
     );
     await conn.query('UPDATE books SET available_copies = available_copies + 1 WHERE id = ?', [record.book_id]);
     await conn.commit();
 
     sendMail(record.email, 'ยืนยันการคืนหนังสือสำเร็จ',
-      returnConfirmedTemplate(record.full_name, record.title, record.deposit_amount))
+      returnConfirmedTemplate(record.full_name, record.title, deposit, lateFee, refundAmount, lateDays))
       .catch(err => console.error('[mailer] return-confirmed error:', err));
 
-    res.json({ message: 'ยืนยันการคืนหนังสือและคืนเงินมัดจำสำเร็จ' });
+    res.json({
+      message: refundAmount > 0
+        ? `ยืนยันการคืนหนังสือแล้ว — ต้องโอนมัดจำคืนลูกค้า ${refundAmount} บาท (หักค่าปรับ ${lateFee} บาท)`
+        : 'ยืนยันการคืนหนังสือแล้ว — ค่าปรับเท่ากับมัดจำ ไม่มียอดต้องโอนคืน',
+      late_fee: lateFee, refund_amount: refundAmount, refund_status: refundStatus
+    });
   } catch (err) {
     await conn.rollback();
     console.error(err);
     res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
   } finally {
     conn.release();
+  }
+});
+
+// แอดมินบันทึกว่าโอนเงินมัดจำคืนให้ลูกค้าแล้ว (พร้อมเลขอ้างอิง/หมายเหตุ ถ้ามี) — ส่งอีเมลแจ้งลูกค้า
+router.put('/borrow-records/:id/mark-refunded', async (req, res) => {
+  try {
+    const reference = String((req.body && req.body.reference) || '').trim().slice(0, 100) || null;
+    const [[record]] = await pool.query(
+      `SELECT br.*, b.title, u.full_name, u.email
+       FROM borrow_records br JOIN books b ON br.book_id = b.id JOIN users u ON br.user_id = u.id
+       WHERE br.id = ?`, [req.params.id]);
+    if (!record) return res.status(404).json({ message: 'ไม่พบรายการ' });
+    if (record.refund_status !== 'pending') {
+      return res.status(400).json({ message: 'รายการนี้ไม่มียอดที่รอโอนคืน' });
+    }
+    await pool.query(
+      `UPDATE borrow_records
+       SET refund_status = 'refunded', deposit_refunded = 1, refunded_at = NOW(), refund_reference = ?
+       WHERE id = ? AND refund_status = 'pending'`,
+      [reference, req.params.id]);
+
+    sendMail(record.email, 'โอนเงินมัดจำคืนแล้ว',
+      refundSentTemplate(record.full_name, record.title, record.refund_amount, reference))
+      .catch(err => console.error('[mailer] refund-sent error:', err));
+
+    res.json({ message: 'บันทึกการโอนเงินมัดจำคืนเรียบร้อย' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'ไม่สามารถบันทึกการโอนคืนได้' });
   }
 });
 
