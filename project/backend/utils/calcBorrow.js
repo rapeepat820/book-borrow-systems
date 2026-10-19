@@ -49,4 +49,47 @@ function calcExtendFee(extraDays) {
   return Number(extraDays) * EXTEND_FEE_PER_DAY;
 }
 
-module.exports = { calcDueDate, calcShippingFee, calcDeposit, calcExtendFee, EXTEND_FEE_PER_DAY };
+// ------------------------------------------------------------
+// ค่าปรับเกินกำหนดคืน (ปรับค่าได้ผ่านตัวแปร env ใน Railway)
+//   LATE_FEE_PER_DAY    = บาทต่อวันที่เกินกำหนด (ค่าเริ่มต้น 10)
+//   LATE_FEE_GRACE_DAYS = จำนวนวันที่ผ่อนผันก่อนเริ่มนับค่าปรับ (ค่าเริ่มต้น 0)
+// ค่าปรับรวมไม่เกินค่ามัดจำของรายการนั้น (เลยจากนั้นแอดมินต้องจัดการเอง เช่น กรณีหนังสือสูญหาย)
+// ------------------------------------------------------------
+function envNumber(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || String(raw).trim() === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+const LATE_FEE_PER_DAY = envNumber('LATE_FEE_PER_DAY', 10);
+const LATE_FEE_GRACE_DAYS = envNumber('LATE_FEE_GRACE_DAYS', 0);
+
+function calcLateFee(lateDays, depositAmount) {
+  const fee = Math.max(Number(lateDays) || 0, 0) * LATE_FEE_PER_DAY;
+  return Math.round(Math.min(fee, Number(depositAmount) || 0) * 100) / 100;
+}
+
+// SQL ที่ใช้นับจำนวนวันเกินกำหนดดิบ (ก่อนหักวันผ่อนผัน): นับถึงวันที่ลูกค้าแจ้งคืน (return_date) ถ้าแจ้งแล้ว ไม่งั้นนับถึงวันนี้
+// ใช้วันที่แจ้งคืน ไม่ใช่วันที่แอดมินกดยืนยัน เพื่อไม่ให้ลูกค้าโดนปรับเพราะแอดมินตรวจช้า
+const LATE_DAYS_SQL = 'GREATEST(DATEDIFF(COALESCE(br.return_date, CURDATE()), br.due_date), 0) AS late_days_raw';
+
+// เติมข้อมูลค่าปรับลงในแถวรายการยืม (ต้อง SELECT LATE_DAYS_SQL มาด้วย)
+function attachLateInfo(row) {
+  const counts = ['borrowing', 'return_requested', 'returned', 'overdue'].includes(row.status);
+  const rawDays = counts ? Number(row.late_days_raw || 0) : 0;
+  const lateDays = Math.max(rawDays - LATE_FEE_GRACE_DAYS, 0);
+  const accrued = calcLateFee(lateDays, row.deposit_amount);
+  return {
+    ...row,
+    is_overdue: row.status === 'borrowing' && rawDays > 0,
+    late_days: lateDays,
+    late_fee_per_day: LATE_FEE_PER_DAY,
+    // รายการที่คืนแล้วใช้ยอดที่หักจริงตอนยืนยัน ที่เหลือใช้ยอดสะสมล่าสุด
+    late_fee_due: row.status === 'returned' ? Number(row.late_fee || 0) : accrued
+  };
+}
+
+module.exports = {
+  calcDueDate, calcShippingFee, calcDeposit, calcExtendFee, EXTEND_FEE_PER_DAY,
+  LATE_FEE_PER_DAY, LATE_FEE_GRACE_DAYS, calcLateFee, LATE_DAYS_SQL, attachLateInfo
+};

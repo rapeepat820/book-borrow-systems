@@ -124,13 +124,40 @@ function returnRequestedTemplate(name, bookTitle) {
   `;
 }
 
-// เทมเพลตแจ้งว่ายืนยันการคืนหนังสือสำเร็จและคืนเงินมัดจำแล้ว
-function returnConfirmedTemplate(name, bookTitle, depositAmount) {
+const baht = n => Number(n).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+
+// เทมเพลตแจ้งว่าแอดมินยืนยันการคืนหนังสือแล้ว (ยังไม่ใช่การโอนเงินคืน — ระบบจะแจ้งอีกครั้งเมื่อโอนแล้ว)
+function returnConfirmedTemplate(name, bookTitle, depositAmount, lateFee = 0, refundAmount = null, lateDays = 0) {
+  const refund = refundAmount === null ? Number(depositAmount) : Number(refundAmount);
+  const days = Number(process.env.REFUND_WITHIN_DAYS) || 3;
   return `
     <p>สวัสดีคุณ ${name},</p>
     <p>เจ้าหน้าที่ได้ตรวจสอบและยืนยันการคืนหนังสือ "<b>${bookTitle}</b>" ของคุณเรียบร้อยแล้ว</p>
-    <p>ระบบได้คืนเงินมัดจำจำนวน <b>${Number(depositAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท</b> ให้คุณเรียบร้อยแล้ว</p>
-    <p>ขอบคุณที่ใช้บริการยืมหนังสือกับเราครับ/ค่ะ</p>
+    <p>ค่ามัดจำ: ${baht(depositAmount)} บาท${Number(lateFee) > 0 ? `<br>หักค่าปรับเกินกำหนดคืน ${lateDays} วัน: ${baht(lateFee)} บาท` : ''}</p>
+    ${refund > 0
+      ? `<p>ยอดที่จะโอนคืนให้คุณ: <b>${baht(refund)} บาท</b> เราจะโอนเข้าบัญชีที่คุณระบุภายใน ${days} วันทำการ และจะส่งอีเมลแจ้งอีกครั้งเมื่อโอนแล้ว</p>`
+      : '<p>ค่าปรับเท่ากับค่ามัดจำ จึงไม่มียอดที่ต้องโอนคืน</p>'}
+    <p>ขอบคุณที่ใช้บริการยืมหนังสือกับเรา</p>
+  `;
+}
+
+// เทมเพลตแจ้งว่าแอดมินโอนเงินมัดจำคืนแล้ว
+function refundSentTemplate(name, bookTitle, amount, reference) {
+  return `
+    <p>สวัสดีคุณ ${name},</p>
+    <p>เราได้โอนเงินมัดจำคืนสำหรับหนังสือ "<b>${bookTitle}</b>" จำนวน <b>${baht(amount)} บาท</b> เข้าบัญชีที่คุณระบุเรียบร้อยแล้ว</p>
+    ${reference ? `<p>เลขอ้างอิง/หมายเหตุ: ${reference}</p>` : ''}
+    <p>หากไม่พบยอดเงินภายใน 1 วันทำการ กรุณาติดต่อเจ้าหน้าที่</p>
+  `;
+}
+
+// เทมเพลตแจ้งเตือนเมื่อเกินกำหนดคืนแล้ว
+function overdueNoticeTemplate(name, bookTitle, dueDate, lateDays, lateFee, feePerDay, deposit) {
+  return `
+    <p>สวัสดีคุณ ${name},</p>
+    <p>หนังสือ "<b>${bookTitle}</b>" เลยกำหนดคืน (${dueDate}) มาแล้ว <b>${lateDays} วัน</b></p>
+    <p>ค่าปรับสะสมขณะนี้ <b>${baht(lateFee)} บาท</b> (วันละ ${baht(feePerDay)} บาท) ซึ่งจะหักจากเงินมัดจำของคุณ (ไม่เกิน ${baht(deposit)} บาท)</p>
+    <p>กรุณาแจ้งคืนหนังสือผ่านระบบพร้อมแนบหลักฐานโดยเร็วที่สุด ค่าปรับจะหยุดนับตั้งแต่วันที่คุณแจ้งคืนในระบบ</p>
   `;
 }
 
@@ -140,5 +167,7 @@ module.exports = {
   dueDateReminderTemplate,
   shippedTemplate,
   returnRequestedTemplate,
-  returnConfirmedTemplate
+  returnConfirmedTemplate,
+  refundSentTemplate,
+  overdueNoticeTemplate
 };
