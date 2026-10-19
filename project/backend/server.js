@@ -21,6 +21,7 @@ if (!process.env.CLOUDINARY_CLOUD_NAME) {
     + 'ซึ่งจะหายไปเมื่อ redeploy บน hosting ที่ใช้พื้นที่เก็บไฟล์ชั่วคราว (เช่น Railway) — ดู DEPLOY.md');
 }
 
+const contactRoutes = require('./routes/contact');
 const authRoutes = require('./routes/auth');
 const bookRoutes = require('./routes/books');
 const borrowRoutes = require('./routes/borrow');
@@ -48,6 +49,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // เส�
 app.use('/api/auth', authRoutes);
 app.use('/api/books', bookRoutes);
 app.use('/api/borrow', borrowRoutes);
+app.use('/api/contact', contactRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
