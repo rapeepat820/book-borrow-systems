@@ -10,4 +10,13 @@ const authLimiter = rateLimit({
   message: { message: 'มีการเรียกใช้งานถี่เกินไป กรุณาลองใหม่อีกครั้งในอีกสักครู่' }
 });
 
-module.exports = { authLimiter };
+// ฟอร์มติดต่อเจ้าหน้าที่: กันสแปมข้อความ/อีเมล (5 ข้อความต่อชั่วโมงต่อ IP)
+const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'ส่งข้อความถี่เกินไป กรุณาลองใหม่อีกครั้งในภายหลัง หรือติดต่อผ่านช่องทางอื่นของร้าน' }
+});
+
+module.exports = { authLimiter, contactLimiter };
