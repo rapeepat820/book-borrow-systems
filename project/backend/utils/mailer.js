@@ -161,6 +161,41 @@ function overdueNoticeTemplate(name, bookTitle, dueDate, lateDays, lateFee, feeP
   `;
 }
 
+// ป้องกันข้อความที่ผู้ใช้พิมพ์ (ซึ่งใส่ลงในอีเมล HTML) ไม่ให้แทรกโค้ด HTML
+const esc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/\n/g, '<br>');
+
+// แจ้งเจ้าหน้าที่ว่ามีข้อความใหม่จากลูกค้า
+function contactNotifyTemplate(msg) {
+  return `
+    <p>มีข้อความใหม่จากลูกค้าผ่านหน้า "ติดต่อเจ้าหน้าที่"</p>
+    <p><b>หัวข้อ:</b> ${esc(msg.subject)}<br>
+       <b>ชื่อ:</b> ${esc(msg.name)}<br>
+       <b>อีเมล:</b> ${esc(msg.email)}${msg.phone ? `<br><b>โทร:</b> ${esc(msg.phone)}` : ''}${msg.borrow_record_id ? `<br><b>รายการยืมเลขที่:</b> ${esc(msg.borrow_record_id)}` : ''}</p>
+    <p>${esc(msg.message)}</p>
+    <p>ตอบกลับได้ที่หน้าแอดมิน เมนู "ข้อความติดต่อ"</p>
+  `;
+}
+
+// ตอบรับลูกค้าว่าได้รับข้อความแล้ว
+function contactAckTemplate(name, subject) {
+  return `
+    <p>สวัสดีคุณ ${esc(name)},</p>
+    <p>เราได้รับข้อความของคุณเรื่อง "<b>${esc(subject)}</b>" แล้ว เจ้าหน้าที่จะตอบกลับทางอีเมลนี้โดยเร็วที่สุด</p>
+    <p>อีเมลนี้ส่งโดยอัตโนมัติ</p>
+  `;
+}
+
+// เจ้าหน้าที่ตอบกลับลูกค้า
+function contactReplyTemplate(name, subject, original, reply) {
+  return `
+    <p>สวัสดีคุณ ${esc(name)},</p>
+    <p>เจ้าหน้าที่ตอบกลับเรื่อง "<b>${esc(subject)}</b>"</p>
+    <p style="padding:12px;background:#f3f4f6;border-radius:8px">${esc(reply)}</p>
+    <p style="color:#6b7280;font-size:13px">ข้อความเดิมของคุณ: ${esc(original)}</p>
+    <p>หากต้องการสอบถามเพิ่มเติม ส่งข้อความใหม่ผ่านหน้า "ติดต่อเจ้าหน้าที่" ได้เลย</p>
+  `;
+}
+
 module.exports = {
   sendMail,
   isMailConfigured,
@@ -169,5 +204,8 @@ module.exports = {
   returnRequestedTemplate,
   returnConfirmedTemplate,
   refundSentTemplate,
-  overdueNoticeTemplate
+  overdueNoticeTemplate,
+  contactNotifyTemplate,
+  contactAckTemplate,
+  contactReplyTemplate
 };
