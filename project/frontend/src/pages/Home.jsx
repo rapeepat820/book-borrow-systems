@@ -59,7 +59,7 @@ export default function Home() {
       const active = rows.filter(r => r.status === 'borrowing');
       const overdue = active.filter(r => daysUntil(r.due_date) < 0);
       const soon = active.filter(r => { const d = daysUntil(r.due_date); return d >= 0 && d <= 3; });
-      if (overdue.length) setDueAlert({ kind: 'danger', title: `มีหนังสือเกินกำหนดคืน ${overdue.length} เล่ม`, text: `"${overdue[0].title}" เลยกำหนดคืนแล้ว กรุณาส่งคืนโดยเร็ว` });
+      if (overdue.length) setDueAlert({ kind: 'danger', title: `มีหนังสือเกินกำหนดคืน ${overdue.length} เล่ม`, text: `"${overdue[0].title}" เลยกำหนดคืนแล้ว ค่าปรับสะสม ${Number(overdue[0].late_fee_due || 0).toLocaleString()} บาท (วันละ ${overdue[0].late_fee_per_day || 0} บาท) กรุณาส่งคืนโดยเร็ว` });
       else if (soon.length) {
         const d = daysUntil(soon[0].due_date);
         setDueAlert({ kind: 'warn', title: `ใกล้ครบกำหนดคืน ${soon.length} เล่ม`, text: `"${soon[0].title}" ${d === 0 ? 'ครบกำหนดคืนวันนี้' : `อีก ${d} วันครบกำหนดคืน`}` });

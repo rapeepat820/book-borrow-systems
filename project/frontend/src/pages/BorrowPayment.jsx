@@ -35,8 +35,8 @@ export default function BorrowPayment() {
     try {
       const formData = new FormData();
       formData.append('slip_image', file);
-      await api.uploadPaymentSlip(id, formData);
-      navigate(`/borrow-success/${id}`);
+      const data = await api.uploadPaymentSlip(id, formData);
+      navigate(`/borrow-success/${id}`, { state: { autoVerified: !!data.auto_verified } });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -101,12 +101,12 @@ export default function BorrowPayment() {
         <input type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
       </label>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
-        สแกน QR ด้านบนผ่านแอปธนาคารเพื่อชำระเงิน แล้วแคปหน้าจอสลิปยืนยันการโอนมาแนบที่นี่ เจ้าหน้าที่จะตรวจสอบและยืนยันให้อีกครั้ง
+        สแกน QR ด้านบนผ่านแอปธนาคารเพื่อชำระเงิน แล้วแคปหน้าจอสลิปยืนยันการโอนมาแนบที่นี่ ระบบจะอ่าน QR บนสลิปเพื่อตรวจสอบอัตโนมัติ (ต้องเป็นสลิปเต็มหน้าจอที่เห็น QR ชัดเจน ห้ามครอปหรือแต่งรูป) หากตรวจอัตโนมัติไม่ได้ เจ้าหน้าที่จะตรวจสอบให้อีกครั้ง
       </p>
 
       {error && <p className="error-text">{error}</p>}
       <button className="btn-primary" onClick={handleSubmitSlip} disabled={submitting || !payment}>
-        {submitting ? 'กำลังส่งสลิป...' : 'ส่งสลิปเพื่อยืนยันการยืม'}
+        {submitting ? 'กำลังตรวจสอบสลิป...' : 'ส่งสลิปเพื่อยืนยันการยืม'}
       </button>
     </div>
   );

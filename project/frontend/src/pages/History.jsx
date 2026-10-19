@@ -62,6 +62,21 @@ export default function History() {
                   <span className={`status-badge status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
                 </div>
                 <p className="muted" style={{ margin: '2px 0' }}>ยืม {r.borrow_date?.slice(0, 10)} · กำหนดคืน {r.due_date?.slice(0, 10)}</p>
+                {r.is_overdue && (
+                  <p style={{ margin: '2px 0', color: 'var(--danger)', fontSize: 13 }}>เกินกำหนดคืน {r.late_days} วัน · ค่าปรับ {Number(r.late_fee_due).toLocaleString()} บาท</p>
+                )}
+                {r.status === 'returned' && Number(r.late_fee) > 0 && (
+                  <p className="muted" style={{ margin: '2px 0', fontSize: 13 }}>หักค่าปรับเกินกำหนด {Number(r.late_fee).toLocaleString()} บาท</p>
+                )}
+                {r.status === 'returned' && r.refund_status === 'pending' && (
+                  <p className="pill pill-amber" style={{ marginTop: 4, display: 'inline-block' }}>รอโอนมัดจำคืน {Number(r.refund_amount).toLocaleString()} บาท</p>
+                )}
+                {r.status === 'returned' && r.refund_status === 'refunded' && (
+                  <p className="pill pill-green" style={{ marginTop: 4, display: 'inline-block' }}>โอนมัดจำคืนแล้ว {Number(r.refund_amount).toLocaleString()} บาท</p>
+                )}
+                {r.status === 'returned' && r.refund_status === 'none' && Number(r.late_fee) > 0 && (
+                  <p className="muted" style={{ margin: '2px 0', fontSize: 13 }}>ค่าปรับเท่ากับค่ามัดจำ ไม่มียอดโอนคืน</p>
+                )}
               </div>
             </Link>
           ))}

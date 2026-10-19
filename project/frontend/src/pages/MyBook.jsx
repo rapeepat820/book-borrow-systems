@@ -63,6 +63,11 @@ export default function MyBook() {
                     {r.tracking_no && ` · ${r.tracking_no}`}
                   </p>
                   <p className="muted" style={{ margin: '2px 0' }}>กำหนดคืน: <b style={{ color: 'var(--text)' }}>{r.due_date?.slice(0, 10)}</b></p>
+                  {r.late_days > 0 && ['borrowing', 'return_requested'].includes(r.status) && (
+                    <p style={{ margin: '4px 0', color: 'var(--danger)', fontSize: 13 }}>
+                      เกินกำหนดคืน {r.late_days} วัน · ค่าปรับ {Number(r.late_fee_due).toLocaleString()} บาท (หักจากมัดจำ){r.status === 'borrowing' ? ' และจะเพิ่มขึ้นทุกวัน' : ''}
+                    </p>
+                  )}
                   <p className="muted" style={{ margin: '2px 0' }}>
                     การชำระเงิน: <span className={`pill ${PAYMENT_CLASS[r.payment_status]}`} style={{ padding: '2px 9px' }}>
                       {PAYMENT_LABEL[r.payment_status]}
@@ -95,7 +100,7 @@ export default function MyBook() {
               </div>
               {r.status === 'return_requested' && (
                 <p className="pill pill-blue" style={{ display: 'block', marginTop: 12, padding: 10, textAlign: 'center' }}>
-                  ส่งหลักฐานการคืนแล้ว รอเจ้าหน้าที่ตรวจสอบ
+                  ส่งหลักฐานการคืนแล้ว รอเจ้าหน้าที่ตรวจสอบและโอนเงินมัดจำคืน
                 </p>
               )}
             </div>

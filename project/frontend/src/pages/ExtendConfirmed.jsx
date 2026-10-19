@@ -10,8 +10,12 @@ export default function ExtendConfirmed() {
       <div className="success-icon-wrap">
         <div className="success-icon"><CheckCircleIcon size={38} /></div>
       </div>
-      <div className="success-title">ส่งสลิปชำระค่าธรรมเนียมแล้ว</div>
-      <div className="success-sub">รอเจ้าหน้าที่ตรวจสอบสลิป เมื่อยืนยันแล้วกำหนดคืนของคุณจะถูกต่ออายุให้ทันที</div>
+      <div className="success-title">{state?.autoVerified ? 'ต่ออายุยืมสำเร็จ!' : 'ส่งสลิปชำระค่าธรรมเนียมแล้ว'}</div>
+      <div className="success-sub">
+        {state?.autoVerified
+          ? 'ระบบตรวจสอบสลิปแล้ว กำหนดคืนของคุณถูกต่ออายุเรียบร้อย'
+          : 'รอเจ้าหน้าที่ตรวจสอบสลิป เมื่อยืนยันแล้วกำหนดคืนของคุณจะถูกต่ออายุให้ทันที'}
+      </div>
 
       <div className="card">
         <div className="summary-row"><span className="label">กำหนดคืนเดิม</span><span className="value">{state?.dueDate?.slice(0, 10) || '-'}</span></div>

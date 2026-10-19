@@ -36,9 +36,9 @@ export default function ExtendPayment() {
     try {
       const formData = new FormData();
       formData.append('slip_image', file);
-      await api.uploadExtendPaymentSlip(id, formData);
+      const data = await api.uploadExtendPaymentSlip(id, formData);
       navigate(`/extend/${id}/confirmed`, {
-        state: { days: state?.days, dueDate: record?.due_date, fee: payment?.extend_fee }
+        state: { days: state?.days, dueDate: record?.due_date, fee: payment?.extend_fee, autoVerified: !!data.auto_verified }
       });
     } catch (err) {
       setError(err.message);
@@ -104,12 +104,12 @@ export default function ExtendPayment() {
         <input type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
       </label>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
-        สแกน QR ด้านบนผ่านแอปธนาคารเพื่อชำระเงิน แล้วแคปหน้าจอสลิปยืนยันการโอนมาแนบที่นี่ เจ้าหน้าที่จะตรวจสอบและต่ออายุยืมให้อีกครั้ง
+        สแกน QR ด้านบนผ่านแอปธนาคารเพื่อชำระเงิน แล้วแคปหน้าจอสลิปยืนยันการโอนมาแนบที่นี่ ระบบจะอ่าน QR บนสลิปเพื่อตรวจสอบอัตโนมัติ (ต้องเป็นสลิปเต็มหน้าจอที่เห็น QR ชัดเจน ห้ามครอปหรือแต่งรูป) หากตรวจอัตโนมัติไม่ได้ เจ้าหน้าที่จะตรวจสอบและต่ออายุยืมให้อีกครั้ง
       </p>
 
       {error && <p className="error-text">{error}</p>}
       <button className="btn-primary" onClick={handleSubmitSlip} disabled={submitting || !payment}>
-        {submitting ? 'กำลังส่งสลิป...' : 'ส่งสลิปเพื่อยืนยันการต่ออายุ'}
+        {submitting ? 'กำลังตรวจสอบสลิป...' : 'ส่งสลิปเพื่อยืนยันการต่ออายุ'}
       </button>
     </div>
   );
