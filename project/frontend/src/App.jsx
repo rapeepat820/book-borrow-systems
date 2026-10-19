@@ -20,6 +20,7 @@ import Menu from './pages/Menu';
 import EditProfile from './pages/EditProfile';
 import ChangePassword from './pages/ChangePassword';
 import Terms from './pages/Terms';
+import Contact from './pages/Contact';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import ReturnBook from './pages/ReturnBook';
 import RequestExtend from './pages/RequestExtend';
@@ -32,6 +33,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminInventory from './pages/admin/AdminInventory';
 import AdminMembers from './pages/admin/AdminMembers';
 import AdminBorrowRecords from './pages/admin/AdminBorrowRecords';
+import AdminContact from './pages/admin/AdminContact';
 
 export default function App() {
   return (
@@ -49,6 +51,7 @@ export default function App() {
         <Route path="/books/:id" element={<BookDetail />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/borrow/:id" element={<ProtectedRoute><Borrow /></ProtectedRoute>} />
         <Route path="/borrow/:id/payment" element={<ProtectedRoute><BorrowPayment /></ProtectedRoute>} />
         <Route path="/borrow-success/:id" element={<ProtectedRoute><BorrowSuccess /></ProtectedRoute>} />
@@ -71,6 +74,7 @@ export default function App() {
         <Route path="books" element={<AdminInventory />} />
         <Route path="members" element={<AdminMembers />} />
         <Route path="borrow-records" element={<AdminBorrowRecords />} />
+        <Route path="contact" element={<AdminContact />} />
       </Route>
     </Routes>
   );
