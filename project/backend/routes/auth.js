@@ -8,13 +8,11 @@ const { sendMail, isMailConfigured } = require('../utils/mailer');
 const { authLimiter } = require('../middleware/rateLimiter');
 const { buildAddressText } = require('../utils/address');
 const { parseRefundAccount } = require('../utils/refundAccount');
-const identityUpload = require('../middleware/identityUpload');
-const { IdentityError, prepareSubmission, saveSubmission } = require('../utils/identity');
 
 const router = express.Router();
 
 // สมัครสมาชิก
-router.post('/register', authLimiter, identityUpload, async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { full_name, email, password, phone, address_detail, subdistrict, district, province, postal_code } = req.body;
     if (!full_name || !email || !password) {
@@ -24,12 +22,7 @@ router.post('/register', authLimiter, identityUpload, async (req, res) => {
     if (existing.length > 0) {
       return res.status(409).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
     }
-    // ยืนยันตัวตนตอนสมัคร: ตรวจเลขบัตร/รูปให้ผ่านก่อนสร้างบัญชี (ปิดได้ด้วย REQUIRE_ID_VERIFICATION=false)
-    const requireId = process.env.REQUIRE_ID_VERIFICATION !== 'false';
-    let prepared = null;
-    if (requireId) {
-      prepared = await prepareSubmission({ idNumber: req.body.id_number, files: req.files, consent: req.body.consent });
-    }
+    // สมัครสมาชิกเป็นขั้นที่ 1 (ข้อมูลบัญชี) — การยืนยันตัวตนเป็นขั้นที่ 2 แยกไปที่ /api/identity/submit
     const hash = await bcrypt.hash(password, 10);
     const address = buildAddressText({ address_detail, subdistrict, district, province, postal_code });
     const [result] = await pool.query(
@@ -39,11 +32,9 @@ router.post('/register', authLimiter, identityUpload, async (req, res) => {
       [full_name, email, hash, phone || null, address || null,
        address_detail || null, subdistrict || null, district || null, province || null, postal_code || null]
     );
-    if (prepared) await saveSubmission(result.insertId, prepared);
     const token = jwt.sign({ id: result.insertId, email, role: 'customer' }, SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: result.insertId, full_name, email, role: 'customer', id_verify_status: prepared ? 'pending' : 'unverified' } });
+    res.status(201).json({ token, user: { id: result.insertId, full_name, email, role: 'customer', id_verify_status: 'unverified' } });
   } catch (err) {
-    if (err instanceof IdentityError) return res.status(err.status).json({ message: err.message });
     console.error(err);
     res.status(500).json({ message: 'เกิดข้อผิดพลาดในการสมัครสมาชิก' });
   }

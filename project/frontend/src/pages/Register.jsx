@@ -4,14 +4,12 @@ import { api, saveSession } from '../api';
 import Logo from '../components/Logo';
 import AddressSelect from '../components/AddressSelect';
 import { EyeIcon, EyeOffIcon } from '../components/Icons';
-import IdentityFields, { EMPTY_IDENTITY, appendIdentity, identityError } from '../components/IdentityFields';
 
 export default function Register() {
   const [form, setForm] = useState({
     full_name: '', email: '', password: '', confirm: '', phone: '',
     address_detail: '', province: '', district: '', subdistrict: '', postal_code: ''
   });
-  const [identity, setIdentity] = useState(EMPTY_IDENTITY);
   const [agree, setAgree] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
@@ -23,17 +21,13 @@ export default function Register() {
     setError('');
     if (form.password !== form.confirm) return setError('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
     if (!agree) return setError('กรุณายอมรับข้อกำหนดและเงื่อนไข และนโยบายความเป็นส่วนตัวก่อนสมัครสมาชิก');
-    const idMsg = identityError(identity);
-    if (idMsg) return setError(idMsg);
     setLoading(true);
     try {
       const { confirm, ...payload } = form;
-      const fd = new FormData();
-      Object.entries(payload).forEach(([k, v]) => fd.append(k, v));
-      appendIdentity(fd, identity);
-      const data = await api.register(fd);
+      const data = await api.register(payload);
       saveSession(data.token, data.user);
-      navigate('/');
+      // ขั้นที่ 2: ยืนยันตัวตน (ถ้าร้านปิดการบังคับ หน้านั้นจะพากลับหน้าแรกเอง)
+      navigate('/verify-identity', { state: { fromRegister: true } });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -47,6 +41,10 @@ export default function Register() {
         <Logo />
         <h2>ลงทะเบียน</h2>
         <p className="subtitle">สร้างบัญชีเพื่อเริ่มยืมหนังสือกับเรา</p>
+        <div className="step-indicator" style={{ display: 'flex', gap: 8, justifyContent: 'center', margin: '4px 0 14px', fontSize: 13 }}>
+          <span className="pill pill-blue">ขั้นที่ 1 สร้างบัญชี</span>
+          <span className="pill pill-gray">ขั้นที่ 2 ยืนยันตัวตน</span>
+        </div>
 
         <form onSubmit={handleSubmit}>
           {error && <p className="error-text">{error}</p>}
@@ -83,8 +81,6 @@ export default function Register() {
           <label>ยืนยันรหัสผ่าน<span className="required-mark">*</span></label>
           <input type={showPw ? 'text' : 'password'} required
             value={form.confirm} onChange={e => setForm({ ...form, confirm: e.target.value })} />
-
-          <IdentityFields value={identity} onChange={patch => setIdentity(v => ({ ...v, ...patch }))} />
 
           <label className="checkbox-row" style={{ margin: '16px 0 0' }}>
             <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} />

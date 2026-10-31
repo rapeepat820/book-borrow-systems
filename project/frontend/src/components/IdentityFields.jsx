@@ -52,14 +52,13 @@ function PhotoPicker({ label, hint, file, onPick }) {
   );
 }
 
-export default function IdentityFields({ value, onChange }) {
+export default function IdentityFields({ value, onChange, compact = false }) {
   const id = value.id_number.replace(/\D/g, '');
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <h3 style={{ margin: '0 0 4px', fontSize: 15 }}>ยืนยันตัวตน</h3>
+      {!compact && <h3 style={{ margin: '0 0 4px', fontSize: 15 }}>ยืนยันตัวตน</h3>}
       <p className="muted" style={{ margin: '0 0 8px', fontSize: 12.5 }}>
-        เพื่อป้องกันการหลอกลวงและการสมัครซ้ำ เจ้าหน้าที่จะตรวจสอบข้อมูลนี้ก่อนอนุมัติให้ยืมหนังสือ
-        รูปบัตรและเลขบัตรเต็มจะถูกลบออกจากระบบทันทีหลังตรวจเสร็จ
+        เจ้าหน้าที่จะตรวจสอบข้อมูลนี้ก่อนอนุมัติให้ยืมหนังสือ รูปบัตรและเลขบัตรเต็มจะถูกลบออกจากระบบทันทีหลังตรวจเสร็จ
       </p>
 
       <label>เลขบัตรประชาชน 13 หลัก<span className="required-mark">*</span></label>
