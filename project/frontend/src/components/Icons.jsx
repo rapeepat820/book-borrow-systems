@@ -85,3 +85,7 @@ export const MailIcon = (p) => <Svg {...p}><rect x="3.5" y="5.5" width="17" heig
 export const MapPinIcon = (p) => <Svg {...p}><path d="M12 20.5s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z" /><circle cx="12" cy="10.5" r="2.2" /></Svg>;
 
 export const ClockIcon = (p) => <Svg {...p}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Svg>;
+
+export const CartIcon = (p) => <Svg {...p}><path d="M3.5 4.5h2.2l1.9 9.6h9.4l1.7-6.9H7" /><circle cx="9.5" cy="18.5" r="1.4" /><circle cx="16.5" cy="18.5" r="1.4" /></Svg>;
+
+export const ChartIcon = (p) => <Svg {...p}><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M21 20H3" /></Svg>;

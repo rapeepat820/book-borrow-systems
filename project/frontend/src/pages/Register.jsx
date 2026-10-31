@@ -4,12 +4,14 @@ import { api, saveSession } from '../api';
 import Logo from '../components/Logo';
 import AddressSelect from '../components/AddressSelect';
 import { EyeIcon, EyeOffIcon } from '../components/Icons';
+import IdentityFields, { EMPTY_IDENTITY, appendIdentity, identityError } from '../components/IdentityFields';
 
 export default function Register() {
   const [form, setForm] = useState({
     full_name: '', email: '', password: '', confirm: '', phone: '',
     address_detail: '', province: '', district: '', subdistrict: '', postal_code: ''
   });
+  const [identity, setIdentity] = useState(EMPTY_IDENTITY);
   const [agree, setAgree] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
@@ -21,10 +23,15 @@ export default function Register() {
     setError('');
     if (form.password !== form.confirm) return setError('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
     if (!agree) return setError('กรุณายอมรับข้อกำหนดและเงื่อนไข และนโยบายความเป็นส่วนตัวก่อนสมัครสมาชิก');
+    const idMsg = identityError(identity);
+    if (idMsg) return setError(idMsg);
     setLoading(true);
     try {
       const { confirm, ...payload } = form;
-      const data = await api.register(payload);
+      const fd = new FormData();
+      Object.entries(payload).forEach(([k, v]) => fd.append(k, v));
+      appendIdentity(fd, identity);
+      const data = await api.register(fd);
       saveSession(data.token, data.user);
       navigate('/');
     } catch (err) {
@@ -77,10 +84,12 @@ export default function Register() {
           <input type={showPw ? 'text' : 'password'} required
             value={form.confirm} onChange={e => setForm({ ...form, confirm: e.target.value })} />
 
+          <IdentityFields value={identity} onChange={patch => setIdentity(v => ({ ...v, ...patch }))} />
+
           <label className="checkbox-row" style={{ margin: '16px 0 0' }}>
             <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} />
-            ฉันยอมรับ <Link to="/terms" className="btn-link">ข้อกำหนดและเงื่อนไข</Link> และรับทราบ
-            <Link to="/privacy" className="btn-link"> นโยบายความเป็นส่วนตัว</Link> เกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคลของฉัน
+            <span>ฉันยอมรับ <Link to="/terms" className="btn-link">ข้อกำหนดและเงื่อนไข</Link> และรับทราบ
+            <Link to="/privacy" className="btn-link"> นโยบายความเป็นส่วนตัว</Link> เกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคลของฉัน</span>
           </label>
 
           <button className="btn-primary" style={{ marginTop: 18 }} disabled={loading}>

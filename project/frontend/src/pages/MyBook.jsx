@@ -55,6 +55,7 @@ export default function MyBook() {
                 <div className="record-body">
                   <div className="record-header">
                     <h3>{r.title}</h3>
+                    {r.order_item_count > 1 && <span className="pill pill-gray" style={{ marginBottom: 4, display: 'inline-block' }}>ออเดอร์เดียวกัน {r.order_item_count} เล่ม · ชำระและจัดส่งรวมกัน</span>}
                     <span className={`status-badge status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
                   </div>
                   <p className="muted" style={{ margin: '2px 0' }}>

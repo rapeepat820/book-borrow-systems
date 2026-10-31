@@ -47,7 +47,7 @@ export default function AdminBorrowRecords() {
   const [busy, setBusy] = useState(false);
 
   const [shipRecord, setShipRecord] = useState(null);
-  const [shipForm, setShipForm] = useState({ shipping_status: 'preparing', tracking_no: '' });
+  const [shipForm, setShipForm] = useState({ shipping_status: 'preparing', tracking_no: '', actual_cost: '' });
   const [shipError, setShipError] = useState('');
 
   function load() { api.adminGetBorrowRecords(filter).then(setRecords); }
@@ -86,7 +86,7 @@ export default function AdminBorrowRecords() {
 
   function openShipModal(record) {
     setShipRecord(record);
-    setShipForm({ shipping_status: record.shipping_status || 'preparing', tracking_no: record.tracking_no || '' });
+    setShipForm({ shipping_status: record.shipping_status || 'preparing', tracking_no: record.tracking_no || '', actual_cost: record.shipping_cost_actual ?? '' });
     setShipError('');
   }
 
@@ -94,7 +94,7 @@ export default function AdminBorrowRecords() {
     e.preventDefault();
     setShipError('');
     try {
-      await api.adminUpdateShippingStatus(shipRecord.id, shipForm.shipping_status, shipForm.tracking_no);
+      await api.adminUpdateShippingStatus(shipRecord.id, shipForm.shipping_status, shipForm.tracking_no, shipForm.actual_cost);
       setShipRecord(null);
       load();
     } catch (err) {
@@ -218,6 +218,7 @@ export default function AdminBorrowRecords() {
                 </td>
                 <td>
                   <span className={`status-badge status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                  {r.order_item_count > 1 && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>ออเดอร์ #{r.order_id} · {r.order_item_count} เล่ม (ชำระ/จัดส่งรวมกัน)</div>}
                   {r.late_days > 0 && ['borrowing', 'return_requested'].includes(r.status) && (
                     <div style={{ marginTop: 6 }}>
                       <span className="status-badge status-overdue">เกินกำหนด {r.late_days} วัน · ปรับ {Number(r.late_fee_due).toLocaleString()} บาท</span>
@@ -364,6 +365,14 @@ export default function AdminBorrowRecords() {
             <label>เลข Tracking No.{['shipped', 'out_for_delivery', 'delivered'].includes(shipForm.shipping_status) && ' (จำเป็น)'}</label>
             <input placeholder="เช่น TH1234567890" value={shipForm.tracking_no}
               onChange={e => setShipForm({ ...shipForm, tracking_no: e.target.value })} />
+            <label>ต้นทุนค่าส่งจริงที่ขนส่งเก็บจากร้าน (บาท, ไม่บังคับ)</label>
+            <input type="number" min="0" step="0.01" placeholder="ใช้เทียบกับค่าส่งที่เก็บจากลูกค้าในรายงาน" value={shipForm.actual_cost}
+              onChange={e => setShipForm({ ...shipForm, actual_cost: e.target.value })} />
+            {shipRecord.box_name && (
+              <p className="muted" style={{ fontSize: 12.5, margin: '6px 0 0' }}>
+                แพ็กใส่: <b>{shipRecord.box_name}</b> · น้ำหนักพัสดุประมาณ {shipRecord.parcel_weight_g} กรัม · ค่าส่งที่เก็บ ({shipRecord.shipping_rate_source === 'flash' ? 'ราคาจริงจากขนส่ง' : 'ตามตารางร้าน'})
+              </p>
+            )}
             <div className="btn-row">
               <button type="button" className="btn-outline" onClick={() => setShipRecord(null)}>ยกเลิก</button>
               <button className="btn-primary">บันทึก</button>

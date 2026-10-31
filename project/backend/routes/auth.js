@@ -8,11 +8,13 @@ const { sendMail, isMailConfigured } = require('../utils/mailer');
 const { authLimiter } = require('../middleware/rateLimiter');
 const { buildAddressText } = require('../utils/address');
 const { parseRefundAccount } = require('../utils/refundAccount');
+const identityUpload = require('../middleware/identityUpload');
+const { IdentityError, prepareSubmission, saveSubmission } = require('../utils/identity');
 
 const router = express.Router();
 
 // สมัครสมาชิก
-router.post('/register', authLimiter, async (req, res) => {
+router.post('/register', authLimiter, identityUpload, async (req, res) => {
   try {
     const { full_name, email, password, phone, address_detail, subdistrict, district, province, postal_code } = req.body;
     if (!full_name || !email || !password) {
@@ -21,6 +23,12 @@ router.post('/register', authLimiter, async (req, res) => {
     const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) {
       return res.status(409).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+    }
+    // ยืนยันตัวตนตอนสมัคร: ตรวจเลขบัตร/รูปให้ผ่านก่อนสร้างบัญชี (ปิดได้ด้วย REQUIRE_ID_VERIFICATION=false)
+    const requireId = process.env.REQUIRE_ID_VERIFICATION !== 'false';
+    let prepared = null;
+    if (requireId) {
+      prepared = await prepareSubmission({ idNumber: req.body.id_number, files: req.files, consent: req.body.consent });
     }
     const hash = await bcrypt.hash(password, 10);
     const address = buildAddressText({ address_detail, subdistrict, district, province, postal_code });
@@ -31,9 +39,11 @@ router.post('/register', authLimiter, async (req, res) => {
       [full_name, email, hash, phone || null, address || null,
        address_detail || null, subdistrict || null, district || null, province || null, postal_code || null]
     );
+    if (prepared) await saveSubmission(result.insertId, prepared);
     const token = jwt.sign({ id: result.insertId, email, role: 'customer' }, SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: result.insertId, full_name, email, role: 'customer' } });
+    res.status(201).json({ token, user: { id: result.insertId, full_name, email, role: 'customer', id_verify_status: prepared ? 'pending' : 'unverified' } });
   } catch (err) {
+    if (err instanceof IdentityError) return res.status(err.status).json({ message: err.message });
     console.error(err);
     res.status(500).json({ message: 'เกิดข้อผิดพลาดในการสมัครสมาชิก' });
   }
@@ -189,7 +199,8 @@ router.get('/me', requireAuth, async (req, res) => {
   const [[user]] = await pool.query(
     `SELECT id, full_name, email, phone, address,
             address_detail, subdistrict, district, province, postal_code, role,
-            refund_method, refund_bank, refund_account_no, refund_account_name
+            refund_method, refund_bank, refund_account_no, refund_account_name,
+            id_verify_status, id_reject_reason
      FROM users WHERE id = ?`, [req.user.id]);
   res.json(user);
 });

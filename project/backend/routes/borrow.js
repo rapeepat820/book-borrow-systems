@@ -2,12 +2,30 @@ const express = require('express');
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
 const { uploadReturnProof, uploadPaymentSlip, uploadExtendSlip, useCloudinary } = require('../middleware/upload');
-const { calcDueDate, calcShippingFee, calcDeposit, calcExtendFee, LATE_DAYS_SQL, attachLateInfo } = require('../utils/calcBorrow');
+const {
+  calcDueDate, calcDeposit, calcExtendFee, LATE_DAYS_SQL, attachLateInfo,
+  MAX_BOOKS_PER_ORDER, splitShippingFee
+} = require('../utils/calcBorrow');
+const { heldCopies, effectiveAvailable, fulfillReservation } = require('../utils/reservations');
+const requireVerified = require('../middleware/requireVerified');
+const { ShippingError, getShippingQuote } = require('../utils/shippingRates');
 const { parseRefundAccount, formatRefundAccount } = require('../utils/refundAccount');
 const { sendMail, returnRequestedTemplate } = require('../utils/mailer');
 const { runSlipCheck, discardFile } = require('../utils/slipVerify');
 
 const router = express.Router();
+
+// รายการยืมที่ต้อง "ชำระเงินด้วยกัน": ถ้าอยู่ในออเดอร์เดียวกัน = ทุกเล่มในออเดอร์ ไม่ใช่ออเดอร์ = เล่มเดียว (เฉพาะของผู้ใช้คนนี้)
+async function loadPaymentGroup(recordId, userId) {
+  const [[record]] = await pool.query('SELECT * FROM borrow_records WHERE id = ? AND user_id = ?', [recordId, userId]);
+  if (!record) return null;
+  const [rows] = record.order_id
+    ? await pool.query(
+        `SELECT br.*, b.title FROM borrow_records br JOIN books b ON br.book_id = b.id
+         WHERE br.order_id = ? AND br.user_id = ? ORDER BY br.id`, [record.order_id, userId])
+    : await pool.query('SELECT br.*, b.title FROM borrow_records br JOIN books b ON br.book_id = b.id WHERE br.id = ?', [record.id]);
+  return rows;
+}
 
 // ------------------------------------------------------------
 // ดูตัวอย่างค่าใช้จ่าย/กำหนดวันคืน ก่อนยืนยันยืม (preview)
@@ -15,70 +33,141 @@ const router = express.Router();
 // ------------------------------------------------------------
 router.get('/quote', requireAuth, async (req, res) => {
   try {
-    const { book_id, shipping_company_id } = req.query;
-    const [[book]] = await pool.query(
+    const { shipping_company_id } = req.query;
+    // รองรับยืมหลายเล่ม: book_ids=1,2,3 (หรือ book_id=1 แบบเดิม)
+    const ids = [...new Set(String(req.query.book_ids || req.query.book_id || '').split(',').map(Number).filter(n => Number.isInteger(n) && n > 0))];
+    if (!ids.length) return res.status(400).json({ message: 'กรุณาเลือกหนังสืออย่างน้อย 1 เล่ม' });
+    if (ids.length > MAX_BOOKS_PER_ORDER) return res.status(400).json({ message: `ยืมได้สูงสุด ${MAX_BOOKS_PER_ORDER} เล่มต่อออเดอร์` });
+
+    const [books] = await pool.query(
       `SELECT b.*, bt.borrow_days, bt.deposit_amount AS type_deposit
-       FROM books b JOIN book_types bt ON b.book_type_id = bt.id WHERE b.id = ?`, [book_id]);
+       FROM books b JOIN book_types bt ON b.book_type_id = bt.id WHERE b.id IN (?)`, [ids]);
     const [[shipping]] = await pool.query('SELECT * FROM shipping_companies WHERE id = ?', [shipping_company_id]);
-    if (!book || !shipping) return res.status(404).json({ message: 'ไม่พบข้อมูลหนังสือหรือบริษัทขนส่ง' });
+    if (books.length !== ids.length || !shipping) return res.status(404).json({ message: 'ไม่พบข้อมูลหนังสือหรือบริษัทขนส่ง' });
 
-    const shipping_fee = calcShippingFee(shipping, 1);
-    const deposit_amount = calcDeposit({ deposit_amount: book.type_deposit }, book);
+    const ordered = ids.map(id => books.find(b => b.id === id));
+    const [[me]] = await pool.query('SELECT postal_code FROM users WHERE id = ?', [req.user.id]);
+    const sq = await getShippingQuote({ company: shipping, books: ordered, dstPostal: me && me.postal_code });
+    const total_weight_g = sq.parcel_weight_g;
+    const shipping_fee = sq.fee;
+    const shares = splitShippingFee(shipping_fee, ordered);
     const borrow_date = new Date().toISOString().slice(0, 10);
-    const due_date = calcDueDate(borrow_date, book.borrow_days, shipping.delivery_days);
+    const items = ordered.map((b, i) => ({
+      book_id: b.id, title: b.title, cover_image: b.cover_image, weight_g: b.weight_g,
+      deposit_amount: calcDeposit({ deposit_amount: b.type_deposit }, b),
+      shipping_fee_share: shares[i], borrow_days: b.borrow_days,
+      due_date: calcDueDate(borrow_date, b.borrow_days, shipping.delivery_days)
+    }));
+    const deposit_amount = items.reduce((sum, it) => sum + Number(it.deposit_amount), 0);
 
-    res.json({ shipping_fee, deposit_amount, borrow_date, due_date, borrow_days: book.borrow_days,
-      delivery_days: shipping.delivery_days, total_pay: Number(shipping_fee) + Number(deposit_amount) });
+    res.json({
+      items, item_count: items.length, max_books: MAX_BOOKS_PER_ORDER,
+      total_weight_g, packaging_weight_g: Number(sq.box.packaging_weight_g),
+      box_name: sq.box.name, rate_source: sq.source, rate_note: sq.note,
+      shipping_fee, deposit_amount, borrow_date,
+      due_date: items.map(i => i.due_date).sort().pop(), // กำหนดคืนแต่ละเล่มอาจต่างกันตามประเภทหนังสือ (ดูใน items)
+      borrow_days: items.length === 1 ? items[0].borrow_days : null,
+      delivery_days: shipping.delivery_days,
+      total_pay: Number(shipping_fee) + deposit_amount
+    });
   } catch (err) {
+    if (err instanceof ShippingError) return res.status(err.status).json({ message: err.message });
     console.error(err);
     res.status(500).json({ message: 'คำนวณข้อมูลไม่สำเร็จ' });
   }
 });
 
 // ------------------------------------------------------------
-// สร้างรายการยืมหนังสือใหม่ (ลูกค้า) — สร้างเป็นสถานะรอชำระเงินก่อนเสมอ
-// (payment_status = 'pending' จนกว่าจะแนบสลิปและแอดมินยืนยัน)
+// สร้างรายการยืมหนังสือใหม่ (ลูกค้า) — ยืมได้หลายเล่มในออเดอร์เดียว (book_ids) หรือเล่มเดียว (book_id)
+// สถานะรอชำระเงินก่อนเสมอ (payment_status = 'pending' จนกว่าจะแนบสลิปและตรวจผ่าน)
+// ค่าส่งคิดตามน้ำหนักรวมของพัสดุ แล้วแบ่งลงแต่ละเล่มตามสัดส่วนน้ำหนัก; ค่ามัดจำแยกตามหนังสือแต่ละเล่ม
 // ------------------------------------------------------------
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requireVerified, async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { book_id, shipping_company_id, shipping_address } = req.body;
+    const { shipping_company_id, shipping_address } = req.body;
+    const rawIds = Array.isArray(req.body.book_ids) ? req.body.book_ids : [req.body.book_id];
+    const ids = [...new Set(rawIds.map(Number).filter(n => Number.isInteger(n) && n > 0))];
     if (!shipping_address || !shipping_address.trim()) {
       return res.status(400).json({ message: 'กรุณากรอกที่อยู่สำหรับจัดส่งหนังสือ' });
     }
+    if (!ids.length) return res.status(400).json({ message: 'กรุณาเลือกหนังสืออย่างน้อย 1 เล่ม' });
+    if (ids.length > MAX_BOOKS_PER_ORDER) {
+      return res.status(400).json({ message: `ยืมได้สูงสุด ${MAX_BOOKS_PER_ORDER} เล่มต่อออเดอร์` });
+    }
+    // คำนวณค่าส่งก่อนเริ่มทรานแซกชัน (อาจเรียก API ขนส่ง ไม่ควรถือล็อกแถวหนังสือไว้ระหว่างรอ)
+    const [pre] = await pool.query('SELECT b.* FROM books b WHERE b.id IN (?)', [ids]);
+    const [[preShip]] = await pool.query('SELECT * FROM shipping_companies WHERE id = ? AND is_active = 1', [shipping_company_id]);
+    if (pre.length !== ids.length) return res.status(404).json({ message: 'ไม่พบหนังสือ' });
+    if (!preShip) return res.status(404).json({ message: 'ไม่พบบริษัทขนส่งที่เลือก' });
+    const [[me]] = await pool.query('SELECT postal_code FROM users WHERE id = ?', [req.user.id]);
+    const sq = await getShippingQuote({ company: preShip, books: ids.map(id => pre.find(b => b.id === id)), dstPostal: me && me.postal_code });
+
     await conn.beginTransaction();
 
-    const [[book]] = await conn.query(
-      `SELECT b.*, bt.borrow_days, bt.deposit_amount AS type_deposit
-       FROM books b JOIN book_types bt ON b.book_type_id = bt.id WHERE b.id = ? FOR UPDATE`, [book_id]);
-    if (!book) { await conn.rollback(); return res.status(404).json({ message: 'ไม่พบหนังสือ' }); }
-    if (book.available_copies < 1) {
-      await conn.rollback();
-      return res.status(400).json({ message: 'หนังสือเล่มนี้ถูกยืมหมดแล้ว' });
+    // ล็อกหนังสือเรียงตาม id เสมอ กัน deadlock เมื่อหลายคนยืมพร้อมกัน
+    const books = [];
+    for (const id of [...ids].sort((a, b) => a - b)) {
+      const [[book]] = await conn.query(
+        `SELECT b.*, bt.borrow_days, bt.deposit_amount AS type_deposit
+         FROM books b JOIN book_types bt ON b.book_type_id = bt.id WHERE b.id = ? FOR UPDATE`, [id]);
+      if (!book) { await conn.rollback(); return res.status(404).json({ message: 'ไม่พบหนังสือ' }); }
+      // เล่มว่างที่เรายืมได้จริง = เล่มว่าง - เล่มที่กันไว้ให้ผู้จองคิวคนอื่น
+      if (await effectiveAvailable(conn, book, req.user.id) < 1) {
+        await conn.rollback();
+        return res.status(400).json({ message: `"${book.title}" ถูกยืมหมดแล้ว (จองคิวได้ที่หน้าหนังสือ)` });
+      }
+      books.push(book);
     }
+    const ordered = ids.map(id => books.find(b => b.id === id));
+
     const [[shipping]] = await conn.query('SELECT * FROM shipping_companies WHERE id = ? AND is_active = 1', [shipping_company_id]);
     if (!shipping) { await conn.rollback(); return res.status(404).json({ message: 'ไม่พบบริษัทขนส่งที่เลือก' }); }
 
-    const shipping_fee = calcShippingFee(shipping, 1);
-    const deposit_amount = calcDeposit({ deposit_amount: book.type_deposit }, book);
+    const total_weight_g = sq.parcel_weight_g;
+    const shipping_fee_total = sq.fee;
+    const shares = splitShippingFee(shipping_fee_total, ordered);
     const borrow_date = new Date().toISOString().slice(0, 10);
-    const due_date = calcDueDate(borrow_date, book.borrow_days, shipping.delivery_days);
 
-    const [result] = await conn.query(
-      `INSERT INTO borrow_records
-       (user_id, book_id, shipping_company_id, shipping_address, shipping_fee, deposit_amount, borrow_date, due_date, status, payment_status, payment_method)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending_shipment', 'pending', 'promptpay')`,
-      [req.user.id, book_id, shipping_company_id, shipping_address.trim(), shipping_fee, deposit_amount, borrow_date, due_date]
-    );
-    await conn.query('UPDATE books SET available_copies = available_copies - 1 WHERE id = ?', [book_id]);
+    let orderId = null;
+    if (ordered.length > 1) {
+      const [o] = await conn.query(
+        'INSERT INTO borrow_orders (user_id, shipping_company_id, item_count, total_weight_g, shipping_fee) VALUES (?, ?, ?, ?, ?)',
+        [req.user.id, shipping_company_id, ordered.length, total_weight_g, shipping_fee_total]);
+      orderId = o.insertId;
+    }
+
+    const recordIds = [];
+    let deposit_total = 0;
+    let due_date = borrow_date;
+    for (let i = 0; i < ordered.length; i++) {
+      const book = ordered[i];
+      const deposit_amount = calcDeposit({ deposit_amount: book.type_deposit }, book);
+      const due = calcDueDate(borrow_date, book.borrow_days, shipping.delivery_days);
+      if (due > due_date) due_date = due;
+      deposit_total += Number(deposit_amount);
+      const [result] = await conn.query(
+        `INSERT INTO borrow_records
+         (user_id, book_id, shipping_company_id, shipping_address, shipping_fee, deposit_amount, borrow_date, due_date, status, payment_status, payment_method, order_id,
+          box_name, parcel_weight_g, shipping_rate_source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending_shipment', 'pending', 'promptpay', ?, ?, ?, ?)`,
+        [req.user.id, book.id, shipping_company_id, shipping_address.trim(), shares[i], deposit_amount, borrow_date, due, orderId,
+          sq.box.name, total_weight_g, sq.source]
+      );
+      recordIds.push(result.insertId);
+      await conn.query('UPDATE books SET available_copies = available_copies - 1 WHERE id = ?', [book.id]);
+      await fulfillReservation(conn, req.user.id, book.id, result.insertId);
+    }
     await conn.commit();
 
     res.status(201).json({
-      id: result.insertId, shipping_fee, deposit_amount, borrow_date, due_date,
+      id: recordIds[0], ids: recordIds, order_id: orderId, item_count: recordIds.length,
+      shipping_fee: shipping_fee_total, deposit_amount: deposit_total, total_weight_g, box_name: sq.box.name, rate_source: sq.source, borrow_date, due_date,
       message: 'สร้างรายการยืมสำเร็จ กรุณาชำระเงินและแนบสลิป'
     });
   } catch (err) {
     await conn.rollback();
+    if (err instanceof ShippingError) return res.status(err.status).json({ message: err.message });
     console.error(err);
     res.status(500).json({ message: 'ไม่สามารถทำรายการยืมได้' });
   } finally {
@@ -91,7 +180,8 @@ router.post('/', requireAuth, async (req, res) => {
 // ------------------------------------------------------------
 router.get('/my', requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT br.*, ${LATE_DAYS_SQL}, b.title, b.cover_image, b.book_type_id, sc.name AS shipping_company_name, sc.tracking_url
+    `SELECT br.*, ${LATE_DAYS_SQL}, b.title, b.cover_image, b.book_type_id, sc.name AS shipping_company_name, sc.tracking_url,
+            (SELECT COUNT(*) FROM borrow_records o WHERE o.order_id = br.order_id) AS order_item_count
      FROM borrow_records br
      JOIN books b ON br.book_id = b.id
      JOIN shipping_companies sc ON br.shipping_company_id = sc.id
@@ -106,7 +196,8 @@ router.get('/my', requireAuth, async (req, res) => {
 // ------------------------------------------------------------
 router.get('/:id', requireAuth, async (req, res) => {
   const [[record]] = await pool.query(
-    `SELECT br.*, ${LATE_DAYS_SQL}, b.title, b.cover_image, b.author, sc.name AS shipping_company_name, sc.tracking_url
+    `SELECT br.*, ${LATE_DAYS_SQL}, b.title, b.cover_image, b.author, sc.name AS shipping_company_name, sc.tracking_url,
+            (SELECT COUNT(*) FROM borrow_records o WHERE o.order_id = br.order_id) AS order_item_count
      FROM borrow_records br
      JOIN books b ON br.book_id = b.id
      JOIN shipping_companies sc ON br.shipping_company_id = sc.id
@@ -121,12 +212,14 @@ router.get('/:id', requireAuth, async (req, res) => {
 // ------------------------------------------------------------
 router.get('/:id/payment-qr', requireAuth, async (req, res) => {
   try {
-    const [[record]] = await pool.query(
-      'SELECT * FROM borrow_records WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-    if (!record) return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' });
-
-    const amount = Number(record.shipping_fee) + Number(record.deposit_amount);
-    res.json({ amount, shipping_fee: record.shipping_fee, deposit_amount: record.deposit_amount });
+    const group = await loadPaymentGroup(req.params.id, req.user.id);
+    if (!group) return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' });
+    const shipping_fee = group.reduce((s, r) => s + Number(r.shipping_fee), 0);
+    const deposit_amount = group.reduce((s, r) => s + Number(r.deposit_amount), 0);
+    res.json({
+      amount: Math.round((shipping_fee + deposit_amount) * 100) / 100, shipping_fee, deposit_amount,
+      item_count: group.length, items: group.map(r => ({ id: r.id, title: r.title }))
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'ไม่สามารถโหลดยอดชำระเงินได้' });
@@ -140,21 +233,23 @@ router.post('/:id/payment-slip', requireAuth, uploadPaymentSlip.single('slip_ima
   try {
     if (!req.file) return res.status(400).json({ message: 'กรุณาแนบรูปสลิปการโอนเงิน' });
 
-    const [[record]] = await pool.query(
-      'SELECT * FROM borrow_records WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-    if (!record) { await discardFile(req.file, useCloudinary); return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' }); }
-    if (record.payment_status === 'paid') {
+    // ออเดอร์หลายเล่มชำระรวมกันด้วยสลิปใบเดียว: ตรวจยอดรวมทั้งออเดอร์ แล้วอัปเดตทุกเล่มพร้อมกัน
+    const group = await loadPaymentGroup(req.params.id, req.user.id);
+    if (!group) { await discardFile(req.file, useCloudinary); return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' }); }
+    const unpaid = group.filter(r => r.payment_status !== 'paid');
+    if (!unpaid.length) {
       await discardFile(req.file, useCloudinary);
       return res.status(400).json({ message: 'รายการนี้ชำระเงินเรียบร้อยแล้ว' });
     }
 
     // อ่าน QR บนสลิป + กันสลิปซ้ำ (+ ตรวจกับธนาคารถ้าตั้งค่า SlipOK ไว้)
-    const expectedAmount = Number(record.shipping_fee) + Number(record.deposit_amount);
+    const expectedAmount = Math.round(unpaid.reduce((sum, r) => sum + Number(r.shipping_fee) + Number(r.deposit_amount), 0) * 100) / 100;
+    const anchor = group[0]; // ใช้เล่มแรกของออเดอร์เป็นตัวแทนในตารางกันสลิปซ้ำ
     let check;
     try {
       check = await runSlipCheck({
-        file: req.file, useCloudinary, recordId: record.id, purpose: 'borrow',
-        expectedAmount, createdAt: record.created_at
+        file: req.file, useCloudinary, recordId: anchor.id, purpose: 'borrow',
+        expectedAmount, createdAt: anchor.created_at
       });
     } catch (err) {
       // ระบบตรวจสลิปพัง (เช่น ยังไม่ได้รัน migration v7) → ใช้วิธีเดิม ส่งให้แอดมินตรวจเอง ไม่ให้ลูกค้าติดขัด
@@ -168,16 +263,17 @@ router.post('/:id/payment-slip', requireAuth, uploadPaymentSlip.single('slip_ima
     }
 
     const imagePath = useCloudinary ? req.file.path : `/uploads/payment-slips/${req.file.filename}`;
+    const ids = unpaid.map(r => r.id);
     if (check.outcome === 'auto_verified') {
       await pool.query(
         `UPDATE borrow_records SET payment_slip_image = ?, payment_status = 'paid', paid_at = NOW()
-         WHERE id = ? AND payment_status <> 'paid'`,
-        [imagePath, req.params.id]
+         WHERE id IN (?) AND payment_status <> 'paid'`,
+        [imagePath, ids]
       );
     } else {
       await pool.query(
-        `UPDATE borrow_records SET payment_slip_image = ?, payment_status = 'pending_verification' WHERE id = ?`,
-        [imagePath, req.params.id]
+        `UPDATE borrow_records SET payment_slip_image = ?, payment_status = 'pending_verification' WHERE id IN (?)`,
+        [imagePath, ids]
       );
     }
     res.json({

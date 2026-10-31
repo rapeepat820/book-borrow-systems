@@ -22,6 +22,8 @@ if (!process.env.CLOUDINARY_CLOUD_NAME) {
 }
 
 const contactRoutes = require('./routes/contact');
+const reservationRoutes = require('./routes/reservations');
+const identityRoutes = require('./routes/identity');
 const authRoutes = require('./routes/auth');
 const bookRoutes = require('./routes/books');
 const borrowRoutes = require('./routes/borrow');
@@ -50,6 +52,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/books', bookRoutes);
 app.use('/api/borrow', borrowRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/reservations', reservationRoutes);
+app.use('/api/identity', identityRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));

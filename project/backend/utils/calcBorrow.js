@@ -17,13 +17,47 @@ function calcDueDate(borrowDate, borrowDays, shippingDeliveryDays) {
   return date.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
+// น้ำหนักบรรจุภัณฑ์ต่อพัสดุ (กรัม) — บวกเพิ่มจากน้ำหนักหนังสือทั้งหมดเสมอ (ปรับได้ด้วยตัวแปร env PACKAGING_WEIGHT_G)
+const PACKAGING_WEIGHT_G = (() => {
+  const n = Number(process.env.PACKAGING_WEIGHT_G);
+  return process.env.PACKAGING_WEIGHT_G && Number.isFinite(n) && n >= 0 ? n : 100;
+})();
+
+// จำนวนเล่มสูงสุดต่อ 1 ออเดอร์ (ปรับได้ด้วย env MAX_BOOKS_PER_ORDER)
+const MAX_BOOKS_PER_ORDER = (() => {
+  const n = Number(process.env.MAX_BOOKS_PER_ORDER);
+  return process.env.MAX_BOOKS_PER_ORDER && Number.isInteger(n) && n >= 1 ? n : 5;
+})();
+
 /**
- * คำนวณค่าจัดส่ง
- * (ข้อ 5: คิดราคาค่าจัดส่งจากบริษัทต้นแบบที่เลือก)
- * shipping_fee = base_fee + fee_per_book * จำนวนเล่ม
+ * น้ำหนักพัสดุรวม (กรัม) = น้ำหนักหนังสือทุกเล่ม + บรรจุภัณฑ์
  */
-function calcShippingFee(shippingCompany, quantity = 1) {
-  return Number(shippingCompany.base_fee) + Number(shippingCompany.fee_per_book) * quantity;
+function calcTotalWeight(books) {
+  const booksWeight = books.reduce((sum, b) => sum + (Number(b.weight_g) > 0 ? Number(b.weight_g) : 300), 0);
+  return booksWeight + PACKAGING_WEIGHT_G;
+}
+
+/**
+ * คำนวณค่าจัดส่งตามน้ำหนักจริง
+ * shipping_fee = base_fee (ครอบคลุมน้ำหนักไม่เกิน base_weight_g)
+ *              + fee_per_extra_kg × (จำนวน กก. ที่เกิน ปัดขึ้นเป็นกิโลเต็ม)
+ */
+function calcShippingFeeByWeight(shippingCompany, totalWeightG) {
+  const baseWeight = Number(shippingCompany.base_weight_g) > 0 ? Number(shippingCompany.base_weight_g) : 1000;
+  const extraKg = Math.ceil(Math.max(Number(totalWeightG) - baseWeight, 0) / 1000);
+  return Math.round((Number(shippingCompany.base_fee) + Number(shippingCompany.fee_per_extra_kg || 0) * extraKg) * 100) / 100;
+}
+
+/**
+ * แบ่งค่าส่งรวมให้แต่ละเล่มตามสัดส่วนน้ำหนัก (ผลรวมเท่าค่าส่งรวมเป๊ะ เศษสตางค์ให้เล่มแรก)
+ */
+function splitShippingFee(totalFee, books) {
+  const weights = books.map(b => (Number(b.weight_g) > 0 ? Number(b.weight_g) : 300));
+  const sumW = weights.reduce((a, c) => a + c, 0);
+  const parts = weights.map(w => Math.floor((Number(totalFee) * w / sumW) * 100) / 100);
+  const remainder = Math.round((Number(totalFee) - parts.reduce((a, c) => a + c, 0)) * 100) / 100;
+  parts[0] = Math.round((parts[0] + remainder) * 100) / 100;
+  return parts;
 }
 
 /**
@@ -90,6 +124,7 @@ function attachLateInfo(row) {
 }
 
 module.exports = {
-  calcDueDate, calcShippingFee, calcDeposit, calcExtendFee, EXTEND_FEE_PER_DAY,
-  LATE_FEE_PER_DAY, LATE_FEE_GRACE_DAYS, calcLateFee, LATE_DAYS_SQL, attachLateInfo
+  calcDueDate, calcDeposit, calcExtendFee, EXTEND_FEE_PER_DAY,
+  LATE_FEE_PER_DAY, LATE_FEE_GRACE_DAYS, calcLateFee, LATE_DAYS_SQL, attachLateInfo,
+  PACKAGING_WEIGHT_G, MAX_BOOKS_PER_ORDER, calcTotalWeight, calcShippingFeeByWeight, splitShippingFee
 };

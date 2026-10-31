@@ -18,12 +18,27 @@ async function request(path, { method = 'GET', body, isForm = false } = {}) {
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'เกิดข้อผิดพลาด');
+  if (!res.ok) {
+    const err = new Error(data.message || 'เกิดข้อผิดพลาด');
+    err.code = data.code; // เช่น ID_VERIFICATION_REQUIRED ให้หน้าเว็บแสดงลิงก์ไปยืนยันตัวตน
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
 export const api = {
-  register: (payload) => request('/auth/register', { method: 'POST', body: payload }),
+  register: (payload) => request('/auth/register', { method: 'POST', body: payload, isForm: payload instanceof FormData }),
+  getIdentityStatus: () => request('/identity/status'),
+  submitIdentity: (formData) => request('/identity/submit', { method: 'POST', body: formData, isForm: true }),
+  adminGetIdVerifications: (status) => request(`/admin/id-verifications?status=${status}`),
+  adminApproveId: (id) => request(`/admin/id-verifications/${id}/approve`, { method: 'PUT', body: {} }),
+  adminRejectId: (id, reason) => request(`/admin/id-verifications/${id}/reject`, { method: 'PUT', body: { reason } }),
+  adminFetchIdImage: async (id, kind) => {
+    const res = await fetch(`${BASE_URL}/admin/id-verifications/${id}/image/${kind}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) throw new Error('เปิดรูปไม่ได้');
+    return URL.createObjectURL(await res.blob());
+  },
   login: (payload) => request('/auth/login', { method: 'POST', body: payload }),
   forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: { email } }),
   resetPassword: (email, otp, password) => request('/auth/reset-password', { method: 'POST', body: { email, otp, password } }),
@@ -78,10 +93,30 @@ export const api = {
 
   adminGetBorrowRecords: (status) => request('/admin/borrow-records' + (status ? `?status=${status}` : '')),
   adminCreateBorrowRecord: (payload) => request('/admin/borrow-records', { method: 'POST', body: payload }),
-  adminUpdateShippingStatus: (id, shipping_status, tracking_no) =>
-    request(`/admin/borrow-records/${id}/shipping-status`, { method: 'PUT', body: { shipping_status, tracking_no } }),
+  adminUpdateShippingStatus: (id, shipping_status, tracking_no, actual_cost) =>
+    request(`/admin/borrow-records/${id}/shipping-status`, { method: 'PUT', body: { shipping_status, tracking_no, actual_cost } }),
+  adminGetShippingBoxes: () => request('/admin/shipping-boxes'),
+  adminSaveShippingBox: (id, payload) => request(id ? `/admin/shipping-boxes/${id}` : '/admin/shipping-boxes', { method: id ? 'PUT' : 'POST', body: payload }),
+  adminDeleteShippingBox: (id) => request(`/admin/shipping-boxes/${id}`, { method: 'DELETE' }),
+  adminGetShippingSettings: () => request('/admin/shipping-settings'),
+  adminSaveShippingSettings: (payload) => request('/admin/shipping-settings', { method: 'PUT', body: payload }),
+  adminShippingTest: (companyId, postal, items) => request(`/admin/shipping-test?company_id=${companyId}&postal=${postal}&items=${items}`),
   adminConfirmReturn: (id, payload = {}) => request(`/admin/borrow-records/${id}/confirm-return`, { method: 'PUT', body: payload }),
   adminMarkRefunded: (id, reference) => request(`/admin/borrow-records/${id}/mark-refunded`, { method: 'PUT', body: { reference } }),
+  getQuoteMany: (bookIds, shippingId) => request(`/borrow/quote?book_ids=${bookIds.join(',')}&shipping_company_id=${shippingId}`),
+  getReservationStatus: (bookId) => request(`/reservations/status/${bookId}`),
+  reserveBook: (bookId) => request('/reservations', { method: 'POST', body: { book_id: bookId } }),
+  getMyReservations: () => request('/reservations/my'),
+  cancelReservation: (id) => request(`/reservations/${id}`, { method: 'DELETE' }),
+  adminGetReport: (from, to) => request(`/admin/reports?from=${from}&to=${to}`),
+  adminDownloadReport: async (from, to) => {
+    const res = await fetch(`${BASE_URL}/admin/reports/export?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) throw new Error('ดาวน์โหลดรายงานไม่สำเร็จ');
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url; a.download = `borrow-report-${from}_${to}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  },
   getContactInfo: () => request('/contact/info'),
   sendContactMessage: (payload) => request('/contact/messages', { method: 'POST', body: payload }),
   getMyContactMessages: () => request('/contact/my'),

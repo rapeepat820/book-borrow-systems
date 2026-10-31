@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, getSession } from '../api';
 import BookCard from '../components/BookCard';
+import VerifyBanner from '../components/VerifyBanner';
 import SectionTitle from '../components/SectionTitle';
 import CategoryPickerModal from '../components/CategoryPickerModal';
 import { BookGridSkeleton } from '../components/Skeleton';
@@ -109,6 +110,7 @@ export default function Home() {
     <div>
       <div className="greeting">{greetingByTime()}{user?.full_name ? `, ${user.full_name}` : ''}</div>
       <div className="greeting-sub">มาหาหนังสือดีๆ เล่มต่อไปกันเถอะ</div>
+      <VerifyBanner />
 
       {dueAlert && (
         <Link to="/my-book" className={`notice-banner ${dueAlert.kind === 'danger' ? 'danger' : ''}`}>

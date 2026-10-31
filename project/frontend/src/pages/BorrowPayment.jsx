@@ -64,8 +64,15 @@ export default function BorrowPayment() {
         <div className="card summary-card">
           <BookCover book={record} />
           <div>
-            <h3 style={{ margin: '0 0 3px', fontSize: 15 }}>{record.title}</h3>
-            <p className="muted" style={{ margin: 0 }}>ค่าจัดส่ง + ค่ามัดจำ (คืนได้เมื่อคืนหนังสือ)</p>
+            <h3 style={{ margin: '0 0 3px', fontSize: 15 }}>
+              {payment?.item_count > 1 ? `ออเดอร์ ${payment.item_count} เล่ม` : record.title}
+            </h3>
+            {payment?.item_count > 1 ? (
+              <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 13.5, lineHeight: 1.7 }}>
+                {payment.items.map(it => <li key={it.id}>{it.title}</li>)}
+              </ul>
+            ) : null}
+            <p className="muted" style={{ margin: '4px 0 0' }}>ค่าจัดส่ง + ค่ามัดจำ (คืนได้เมื่อคืนหนังสือ){payment?.item_count > 1 ? ' — ชำระรวมครั้งเดียวด้วยสลิปใบเดียว' : ''}</p>
           </div>
         </div>
       )}

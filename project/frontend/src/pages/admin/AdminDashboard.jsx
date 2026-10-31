@@ -100,6 +100,16 @@ export default function AdminDashboard() {
           <h3>{stats.pendingReturnCheck}</h3>
           <p>รอตรวจสอบการคืนหนังสือ</p>
         </Link>
+        <Link to="/admin/identity" className="card stat-card link warn">
+          <div className="stat-card-icon"><UsersIcon size={20} /></div>
+          <h3>{stats.pendingIdVerifications ?? 0}</h3>
+          <p>รอตรวจสอบยืนยันตัวตน</p>
+        </Link>
+        <Link to="/admin/reports" className="card stat-card link">
+          <div className="stat-card-icon"><BookStackIcon size={20} /></div>
+          <h3>{stats.waitingReservations ?? 0}</h3>
+          <p>คนรอคิวจองหนังสือ (ดูรายงาน)</p>
+        </Link>
         <Link to="/admin/contact" className="card stat-card link warn">
           <div className="stat-card-icon"><AlertIcon size={20} /></div>
           <h3>{stats.newMessages ?? 0}</h3>

@@ -59,6 +59,7 @@ export default function History() {
               <div className="record-body">
                 <div className="record-header">
                   <h3>{r.title}</h3>
+                  {r.order_item_count > 1 && <span className="pill pill-gray" style={{ marginBottom: 4, display: 'inline-block' }}>ออเดอร์เดียวกัน {r.order_item_count} เล่ม</span>}
                   <span className={`status-badge status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
                 </div>
                 <p className="muted" style={{ margin: '2px 0' }}>ยืม {r.borrow_date?.slice(0, 10)} · กำหนดคืน {r.due_date?.slice(0, 10)}</p>

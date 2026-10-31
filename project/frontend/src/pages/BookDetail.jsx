@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, getSession } from '../api';
+import { addToCart, inCart } from '../cart';
 import BookCover from '../components/BookCover';
 import BookCard from '../components/BookCard';
 import FavButton from '../components/FavButton';
@@ -13,6 +14,13 @@ export default function BookDetail() {
   const [related, setRelated] = useState([]);
   const [expanded, setExpanded] = useState(false);
   const { user } = getSession();
+  const [rs, setRs] = useState(null); // สถานะการจอง/ยืมของผู้ใช้กับหนังสือเล่มนี้
+  const [msg, setMsg] = useState('');
+  const [inCartNow, setInCartNow] = useState(false);
+
+  function loadStatus() {
+    if (user) api.getReservationStatus(id).then(setRs).catch(() => setRs(null));
+  }
 
   useEffect(() => {
     setBook(null); setExpanded(false); setRelated([]);
@@ -23,8 +31,24 @@ export default function BookDetail() {
         .then(rows => setRelated(rows.filter(r => r.id !== b.id).slice(0, 8)))
         .catch(() => {});
     });
+    setMsg(''); setRs(null); setInCartNow(inCart(id));
+    loadStatus();
     window.scrollTo({ top: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  async function handleReserve() {
+    setMsg('');
+    try { const r = await api.reserveBook(book.id); setMsg(r.message); loadStatus(); } catch (e) { setMsg(e.message); }
+  }
+  async function handleCancelReserve() {
+    try { await api.cancelReservation(rs.my_reservation.id); setMsg('ยกเลิกการจองแล้ว'); loadStatus(); } catch (e) { setMsg(e.message); }
+  }
+  function handleAddToCart() {
+    const r = addToCart(book.id);
+    setMsg(r.ok ? 'เพิ่มลงตะกร้าแล้ว' : r.message);
+    setInCartNow(r.ok);
+  }
 
   if (!book) return <DetailSkeleton />;
 
@@ -86,15 +110,44 @@ export default function BookDetail() {
         <p className="desc-text muted">ยังไม่มีเรื่องย่อสำหรับหนังสือเล่มนี้</p>
       )}
 
-      {book.available_copies > 0 ? (
-        user ? (
-          <Link className="btn-primary" style={{ marginTop: 10 }} to={`/borrow/${book.id}`}>ยืมหนังสือเล่มนี้</Link>
-        ) : (
-          <Link className="btn-primary" style={{ marginTop: 10 }} to="/login">เข้าสู่ระบบเพื่อยืมหนังสือ</Link>
-        )
-      ) : (
-        <button className="btn-primary" style={{ marginTop: 10 }} disabled>ยืมหมดแล้ว</button>
-      )}
+      {!user ? (
+        <Link className="btn-primary" style={{ marginTop: 10 }} to="/login">
+          {book.available_copies > 0 ? 'เข้าสู่ระบบเพื่อยืมหนังสือ' : 'เข้าสู่ระบบเพื่อจองคิว'}
+        </Link>
+      ) : (() => {
+        const mine = rs?.my_reservation;
+        const canBorrow = rs ? rs.can_borrow_now : book.available_copies > 0;
+        return (
+          <div style={{ marginTop: 10 }}>
+            {mine?.status === 'ready' && (
+              <div className="warning-box" style={{ borderColor: 'var(--success, #22c55e)' }}>
+                <span>เล่มนี้พร้อมให้ยืมแล้ว กันไว้ให้คุณถึง <b>{String(mine.expires_at).replace('T', ' ').slice(0, 16)}</b></span>
+              </div>
+            )}
+            {mine?.status === 'waiting' && (
+              <div className="warning-box"><span>คุณอยู่ในคิวที่ <b>{mine.position}</b> (มีผู้จองทั้งหมด {rs.queue_length} คน) เมื่อมีเล่มว่างเราจะอีเมลแจ้ง</span></div>
+            )}
+            {canBorrow ? (
+              <div className="btn-row">
+                <Link className="btn-primary" to={`/borrow/${book.id}`}>ยืมหนังสือเล่มนี้</Link>
+                {!inCartNow
+                  ? <button type="button" className="btn-outline" onClick={handleAddToCart}>เพิ่มลงตะกร้า</button>
+                  : <Link className="btn-outline" to="/cart">อยู่ในตะกร้า — ไปที่ตะกร้า</Link>}
+              </div>
+            ) : mine?.status === 'waiting' ? (
+              <button type="button" className="btn-outline" onClick={handleCancelReserve}>ยกเลิกการจองคิว</button>
+            ) : (
+              <>
+                <button type="button" className="btn-primary" onClick={handleReserve}>
+                  จองคิว{rs?.queue_length ? ` (มีคิวรออยู่ ${rs.queue_length} คน)` : ''}
+                </button>
+                <p className="muted" style={{ fontSize: 12.5, margin: '6px 0 0' }}>เล่มนี้ถูกยืมหมดแล้ว จองคิวไว้ได้ เมื่อมีคนคืนเราจะกันเล่มไว้ให้คุณ {rs?.hold_hours || 48} ชั่วโมง</p>
+              </>
+            )}
+            {msg && <p className="muted" style={{ margin: '8px 0 0' }}>{msg}</p>}
+          </div>
+        );
+      })()}
       </div>
       </div>
 

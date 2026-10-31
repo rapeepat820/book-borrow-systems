@@ -196,6 +196,32 @@ function contactReplyTemplate(name, subject, original, reply) {
   `;
 }
 
+// แจ้งผู้จองว่าหนังสือพร้อมให้ยืมแล้ว (กันเล่มไว้ให้ชั่วคราว)
+function reservationReadyTemplate(name, bookTitle, holdHours, link) {
+  return `
+    <p>สวัสดีคุณ ${esc(name)},</p>
+    <p>หนังสือ "<b>${esc(bookTitle)}</b>" ที่คุณจองคิวไว้ <b>พร้อมให้ยืมแล้ว</b></p>
+    <p>เรากันเล่มไว้ให้คุณ <b>${holdHours} ชั่วโมง</b> กรุณาเข้าสู่ระบบแล้วกดยืมภายในเวลานี้ หากเลยกำหนด สิทธิ์จะส่งต่อให้คนถัดไปในคิว</p>
+    ${link ? `<p><a href="${esc(link)}">เปิดหน้าหนังสือเพื่อยืม</a></p>` : ''}
+  `;
+}
+
+// ผลการยืนยันตัวตน
+function idApprovedTemplate(name) {
+  return `
+    <p>สวัสดีคุณ ${esc(name)},</p>
+    <p>การยืนยันตัวตนของคุณ <b>ผ่านเรียบร้อยแล้ว</b> ตอนนี้ยืมหนังสือได้ทันที</p>
+    <p>เพื่อความปลอดภัยของข้อมูล เราได้ลบรูปบัตรและรูปเซลฟี่ของคุณออกจากระบบแล้ว</p>
+  `;
+}
+function idRejectedTemplate(name, reason) {
+  return `
+    <p>สวัสดีคุณ ${esc(name)},</p>
+    <p>การยืนยันตัวตนของคุณ <b>ยังไม่ผ่าน</b>${reason ? `<br>เหตุผล: ${esc(reason)}` : ''}</p>
+    <p>กรุณาเข้าสู่ระบบแล้วส่งข้อมูลยืนยันตัวตนใหม่อีกครั้ง (ถ่ายให้เห็นข้อมูลบนบัตรชัดเจน และเซลฟี่ให้เห็นหน้ากับบัตรพร้อมกัน) รูปเดิมถูกลบออกจากระบบแล้ว</p>
+  `;
+}
+
 module.exports = {
   sendMail,
   isMailConfigured,
@@ -207,5 +233,8 @@ module.exports = {
   overdueNoticeTemplate,
   contactNotifyTemplate,
   contactAckTemplate,
-  contactReplyTemplate
+  contactReplyTemplate,
+  reservationReadyTemplate,
+  idApprovedTemplate,
+  idRejectedTemplate
 };

@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { clearSession, getSession } from '../api';
-import { ChevronLeftIcon, ChevronRightIcon, EditIcon, LogoutIcon, GlobeIcon, FileTextIcon, UserIcon, MessageIcon } from '../components/Icons';
+import { ChevronLeftIcon, ChevronRightIcon, EditIcon, LogoutIcon, GlobeIcon, FileTextIcon, UserIcon, MessageIcon, BellIcon, AlertIcon } from '../components/Icons';
 
 export default function Menu() {
   const { user } = getSession();
@@ -46,6 +46,16 @@ export default function Menu() {
           <span className="grow"><div className="label">ภาษา</div></span>
           <span className="muted">ไทย</span>
         </div>
+        <Link to="/verify-identity" className="quick-list-item">
+          <span className="quick-list-icon"><AlertIcon size={18} /></span>
+          <span className="grow"><div className="label">ยืนยันตัวตน</div></span>
+          <ChevronRightIcon size={18} />
+        </Link>
+        <Link to="/reservations" className="quick-list-item">
+          <span className="quick-list-icon"><BellIcon size={18} /></span>
+          <span className="grow"><div className="label">การจองคิวหนังสือ</div></span>
+          <ChevronRightIcon size={18} />
+        </Link>
         <Link to="/contact" className="quick-list-item">
           <span className="quick-list-icon"><MessageIcon size={18} /></span>
           <span className="grow"><div className="label">ติดต่อเจ้าหน้าที่</div></span>

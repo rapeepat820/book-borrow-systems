@@ -114,7 +114,8 @@ export default function Borrow() {
 
       {quote && (
         <div className="quote-box">
-          <p>ค่าจัดส่ง: <b>{quote.shipping_fee} บาท</b></p>
+          <p>ค่าจัดส่ง: <b>{quote.shipping_fee} บาท</b> <span className="muted">({quote.box_name} · น้ำหนักพัสดุ {quote.total_weight_g} กรัม{quote.rate_source === 'flash' ? ' · ราคาจากขนส่งโดยตรง' : quote.rate_source === 'manual_fallback' ? ' · ราคาประมาณการ' : ''})</span></p>
+          {quote.rate_note && <p className="muted" style={{ fontSize: 12.5 }}>{quote.rate_note}</p>}
           <p>ค่ามัดจำหนังสือ (คืนเต็มจำนวนเมื่อคืนหนังสือสภาพดี): <b>{quote.deposit_amount} บาท</b></p>
           <p>วันที่เริ่มยืม: {quote.borrow_date}</p>
           <p>กำหนดคืนภายในวันที่: <b>{quote.due_date}</b> (รวมเวลาจัดส่งไป-กลับ {quote.delivery_days * 2} วัน)</p>
@@ -123,7 +124,7 @@ export default function Borrow() {
         </div>
       )}
 
-      {error && <p className="error-text">{error}</p>}
+      {error && <p className="error-text">{error}{/ยืนยันตัวตน/.test(error) && <> <Link to="/verify-identity" className="btn-link">ไปยืนยันตัวตน</Link></>}</p>}
       <button className="btn-primary" style={{ marginTop: 16 }} onClick={handleGoToPayment} disabled={!quote || !me.address || submitting}>
         {submitting ? 'กำลังสร้างรายการ...' : 'ถัดไป: ชำระเงิน →'}
       </button>

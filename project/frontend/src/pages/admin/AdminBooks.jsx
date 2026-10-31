@@ -3,7 +3,7 @@ import { api } from '../../api';
 import { CameraIcon } from '../../components/Icons';
 
 const EMPTY = {
-  title: '', author: '', cover_image: '', description: '', book_type_id: '', total_copies: 1, price_value: 0,
+  title: '', author: '', cover_image: '', description: '', book_type_id: '', total_copies: 1, price_value: 0, weight_g: 300,
   publisher: '', publish_year: '', edition: '', volume: '', print_no: ''
 };
 
@@ -47,7 +47,7 @@ export default function AdminBooks() {
     setForm({
       title: b.title, author: b.author, cover_image: b.cover_image || '',
       description: b.description || '', book_type_id: b.book_type_id,
-      total_copies: b.total_copies, price_value: b.price_value,
+      total_copies: b.total_copies, price_value: b.price_value, weight_g: b.weight_g ?? 300,
       publisher: b.publisher || '', publish_year: b.publish_year || '',
       edition: b.edition || '', volume: b.volume || '', print_no: b.print_no || ''
     });
@@ -170,6 +170,10 @@ export default function AdminBooks() {
             <label>มูลค่าหนังสือ (บาท)</label>
             <input type="number" min="0" value={form.price_value} onChange={e => setForm({ ...form, price_value: e.target.value })} />
           </div>
+          <div>
+            <label>น้ำหนักหนังสือ (กรัม) — ใช้คิดค่าส่ง</label>
+            <input type="number" min="1" value={form.weight_g} onChange={e => setForm({ ...form, weight_g: e.target.value })} />
+          </div>
         </div>
         <label>รูปปกหนังสือ</label>
         <label className="card" style={{
@@ -241,7 +245,7 @@ export default function AdminBooks() {
               <td>{b.edition || '-'}</td>
               <td>{b.volume || '-'}</td>
               <td>{b.available_copies}/{b.total_copies}</td>
-              <td>{b.price_value} บาท</td>
+              <td>{b.price_value} บาท <div className="muted" style={{ fontSize: 12 }}>{b.weight_g ?? 300} ก.</div></td>
               <td>
                 <button className="btn-link" onClick={() => startEdit(b)}>แก้ไข</button>
                 <button className="btn-link danger" onClick={() => handleDelete(b.id)}>ลบ</button>

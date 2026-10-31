@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const pool = require('../config/db');
 const { sendMail, dueDateReminderTemplate, overdueNoticeTemplate } = require('./mailer');
 const { LATE_DAYS_SQL, attachLateInfo } = require('./calcBorrow');
+const { expireReservations } = require('./reservations');
 
 // ค้นหารายการที่ใกล้ครบกำหนดคืนใน 2 วันข้างหน้า แล้วส่งอีเมลแจ้งเตือน
 // แยกออกมาเป็นฟังก์ชันเดี่ยวๆ เพื่อให้ (1) cron รายวันเรียกใช้ และ (2) แอดมินกดสั่งส่งเองตอนทดสอบได้ด้วย
@@ -67,6 +68,15 @@ function startReminderCron() {
       await sendOverdueNotices();
     } catch (err) {
       console.error('[reminderCron] overdue error:', err);
+    }
+  }, opts);
+  // ทุกชั่วโมง: ตัดสิทธิ์ผู้จองคิวที่ไม่มายืมภายในเวลา แล้วส่งต่อให้คนถัดไป
+  cron.schedule('0 * * * *', async () => {
+    try {
+      const n = await expireReservations();
+      if (n) console.log(`[reminderCron] สิทธิ์จองคิวหมดอายุ ${n} รายการ`);
+    } catch (err) {
+      console.error('[reminderCron] reservation expire error:', err.message);
     }
   }, opts);
 }
