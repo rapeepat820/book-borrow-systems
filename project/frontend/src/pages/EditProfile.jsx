@@ -68,7 +68,7 @@ export default function EditProfile() {
 
           <label style={{ marginTop: 18 }}>บัญชีรับเงินมัดจำคืน</label>
           <p className="muted" style={{ margin: '0 0 6px', fontSize: 12.5 }}>
-            เมื่อคืนหนังสือแล้ว เราจะโอนเงินมัดจำ (หักค่าปรับถ้ามี) เข้าบัญชีนี้ คุณแก้ไขได้อีกครั้งตอนแจ้งคืนหนังสือ
+            เมื่อคืนหนังสือแล้ว เราจะโอนเงินมัดจำ <span className="nb">(หักค่าปรับถ้ามี)</span> เข้าบัญชีนี้ คุณแก้ไขได้อีกครั้งตอนแจ้งคืนหนังสือ
           </p>
           <RefundAccountFields value={form} onChange={patch => setForm({ ...form, ...patch })} />
 

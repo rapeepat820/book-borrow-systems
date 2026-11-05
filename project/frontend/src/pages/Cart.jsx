@@ -71,7 +71,7 @@ export default function Cart() {
       {ids.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: 28 }}>
           <CartIcon size={34} />
-          <p className="muted">ตะกร้ายังว่างอยู่ เลือกหนังสือแล้วกด "เพิ่มลงตะกร้า" เพื่อยืมหลายเล่มพร้อมกัน (สูงสุด {MAX_CART_ITEMS} เล่มต่อออเดอร์)</p>
+          <p className="muted">ตะกร้ายังว่างอยู่ เลือกหนังสือแล้วกด "เพิ่มลงตะกร้า" เพื่อยืมหลายเล่มพร้อมกัน <span className="nb">(สูงสุด {MAX_CART_ITEMS} เล่มต่อออเดอร์)</span></p>
           <Link to="/" className="btn-primary auto">เลือกหนังสือ</Link>
         </div>
       ) : (
@@ -86,7 +86,7 @@ export default function Cart() {
                   <p className="muted" style={{ margin: 0 }}>
                     {books[id].type_name} · ยืมได้ {books[id].borrow_days} วัน · {books[id].weight_g ?? 300} ก.
                   </p>
-                  {books[id].available_copies < 1 && <p style={{ margin: '4px 0 0', color: 'var(--danger)', fontSize: 13 }}>เล่มนี้ถูกยืมหมดแล้ว — นำออกจากตะกร้าเพื่อดำเนินการต่อ (หรือจองคิวที่หน้าหนังสือ)</p>}
+                  {books[id].available_copies < 1 && <p style={{ margin: '4px 0 0', color: 'var(--danger)', fontSize: 13 }}>เล่มนี้ถูกยืมหมดแล้ว — นำออกจากตะกร้าเพื่อดำเนินการต่อ <span className="nb">(หรือจองคิวที่หน้าหนังสือ)</span></p>}
                 </div>
                 <button className="btn-link danger" onClick={() => remove(id)} aria-label="นำออก"><TrashIcon size={18} /></button>
               </div>
@@ -117,18 +117,20 @@ export default function Cart() {
 
           {quote && (
             <div className="quote-box">
-              <p>จำนวน <b>{quote.item_count}</b> เล่ม · น้ำหนักพัสดุรวม <b>{quote.total_weight_g.toLocaleString()} กรัม</b> <span className="muted">(รวมบรรจุภัณฑ์ {quote.packaging_weight_g} ก.)</span></p>
-              <p>แพ็กใส่ <b>{quote.box_name}</b></p>
-              <p>ค่าจัดส่งรวม: <b>{quote.shipping_fee} บาท</b> <span className="muted">({quote.rate_source === 'flash' ? 'ราคาจากขนส่งโดยตรง' : quote.rate_source === 'manual_fallback' ? 'ราคาประมาณการ' : 'ตามตารางราคา'})</span></p>
-              {quote.rate_note && <p className="muted" style={{ fontSize: 12.5 }}>{quote.rate_note}</p>}
-              <p>ค่ามัดจำรวม (คืนเมื่อคืนหนังสือสภาพดี): <b>{quote.deposit_amount} บาท</b></p>
+              <div className="qrow"><span>จำนวนหนังสือ</span><b>{quote.item_count} เล่ม</b></div>
+              <div className="qrow"><span>น้ำหนักพัสดุ <span className="nb">(รวมกล่อง)</span></span><b>{quote.total_weight_g.toLocaleString()} กรัม</b></div>
+              <div className="qrow"><span>แพ็กใส่</span><b>{quote.box_name}</b></div>
+              <div className="qrow"><span>ค่าจัดส่ง <span className="nb">({quote.rate_source === 'flash' ? 'ราคาจากขนส่ง' : quote.rate_source === 'manual_fallback' ? 'ราคาประมาณการ' : 'ตามตารางร้าน'})</span></span><b>{quote.shipping_fee} บาท</b></div>
+              {quote.rate_note && <p className="qnote">{quote.rate_note}</p>}
+              <div className="qrow"><span>ค่ามัดจำรวม <span className="nb">(คืนได้)</span></span><b>{quote.deposit_amount} บาท</b></div>
+              <p className="qnote">คิด 20% ของมูลค่าแต่ละเล่ม คืนเมื่อคืนหนังสือสภาพดี</p>
               {quote.items.map(it => (
-                <p key={it.book_id} className="muted" style={{ fontSize: 13, margin: '2px 0' }}>
-                  • {it.title} — มัดจำ {it.deposit_amount} บาท · กำหนดคืน {String(it.due_date).slice(0, 10)}
+                <p key={it.book_id} className="qitem">
+                  • {it.title} <span className="nb">(มัดจำ {it.deposit_amount} บาท)</span> · <span className="nb">คืนภายใน {String(it.due_date).slice(0, 10)}</span>
                 </p>
               ))}
               <hr />
-              <p>ยอดชำระตอนนี้ (ค่าส่ง + มัดจำ): <b>{quote.total_pay} บาท</b></p>
+              <div className="qrow qtotal"><span>ยอดชำระตอนนี้ <span className="nb">(ค่าส่ง + มัดจำ)</span></span><b>{quote.total_pay} บาท</b></div>
             </div>
           )}
 

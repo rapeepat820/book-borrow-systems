@@ -55,9 +55,9 @@ export default function MyBook() {
                 <div className="record-body">
                   <div className="record-header">
                     <h3>{r.title}</h3>
-                    {r.order_item_count > 1 && <span className="pill pill-gray" style={{ marginBottom: 4, display: 'inline-block' }}>ออเดอร์เดียวกัน {r.order_item_count} เล่ม · ชำระและจัดส่งรวมกัน</span>}
                     <span className={`status-badge status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
                   </div>
+                  {r.order_item_count > 1 && <p className="record-note">อยู่ในออเดอร์เดียวกัน {r.order_item_count} เล่ม · ชำระและจัดส่งรวมกัน</p>}
                   <p className="muted" style={{ margin: '2px 0' }}>
                     <TruckIcon size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
                     {r.shipping_company_name} · {SHIPPING_LABEL[r.shipping_status]}
@@ -66,7 +66,7 @@ export default function MyBook() {
                   <p className="muted" style={{ margin: '2px 0' }}>กำหนดคืน: <b style={{ color: 'var(--text)' }}>{r.due_date?.slice(0, 10)}</b></p>
                   {r.late_days > 0 && ['borrowing', 'return_requested'].includes(r.status) && (
                     <p style={{ margin: '4px 0', color: 'var(--danger)', fontSize: 13 }}>
-                      เกินกำหนดคืน {r.late_days} วัน · ค่าปรับ {Number(r.late_fee_due).toLocaleString()} บาท (หักจากมัดจำ){r.status === 'borrowing' ? ' และจะเพิ่มขึ้นทุกวัน' : ''}
+                      เกินกำหนดคืน {r.late_days} วัน · ค่าปรับ {Number(r.late_fee_due).toLocaleString()} บาท <span className="nb">(หักจากมัดจำ)</span>{r.status === 'borrowing' ? ' และจะเพิ่มขึ้นทุกวัน' : ''}
                     </p>
                   )}
                   <p className="muted" style={{ margin: '2px 0' }}>
@@ -75,10 +75,10 @@ export default function MyBook() {
                     </span>
                   </p>
                   {r.extend_status === 'pending' && r.extend_payment_status === 'pending' && (
-                    <span className="pill pill-amber" style={{ marginTop: 4 }}>รอชำระค่าธรรมเนียมต่ออายุ (+{r.extend_requested_days} วัน)</span>
+                    <span className="pill pill-amber" style={{ marginTop: 4 }}>รอชำระค่าธรรมเนียมต่ออายุ <span className="nb">(+{r.extend_requested_days} วัน)</span></span>
                   )}
                   {r.extend_status === 'pending' && r.extend_payment_status === 'pending_verification' && (
-                    <span className="pill pill-amber" style={{ marginTop: 4 }}>รอตรวจสอบการชำระค่าธรรมเนียมต่ออายุ (+{r.extend_requested_days} วัน)</span>
+                    <span className="pill pill-amber" style={{ marginTop: 4 }}>รอตรวจสอบการชำระค่าต่ออายุ <span className="nb">(+{r.extend_requested_days} วัน)</span></span>
                   )}
                 </div>
               </div>
@@ -86,24 +86,24 @@ export default function MyBook() {
               <p className="muted" style={{ margin: '10px 0 0', fontSize: 13 }}>
                 มีปัญหาเกี่ยวกับรายการนี้? <Link to={`/contact?record=${r.id}`} className="btn-link">ติดต่อเจ้าหน้าที่</Link>
               </p>
-              <div className="btn-row">
+              <div className="record-actions">
                 {r.payment_status === 'pending' && (
-                  <Link to={`/borrow/${r.id}/payment`} className="btn-primary auto" style={{ flex: 1 }}>ชำระเงิน</Link>
+                  <Link to={`/borrow/${r.id}/payment`} className="btn-primary span-2">ชำระเงิน</Link>
                 )}
-                <Link to={`/track/${r.id}`} className="btn-secondary auto" style={{ flex: 1 }}>ติดตามพัสดุ</Link>
+                <Link to={`/track/${r.id}`} className="btn-secondary span-2">ติดตามพัสดุ</Link>
                 {r.status !== 'return_requested' && (
                   <>
                     {r.extend_status === 'pending' && r.extend_payment_status === 'pending' ? (
-                      <Link to={`/extend/${r.id}/payment`} className="btn-outline" style={{ flex: 1 }}>ชำระค่าธรรมเนียมต่ออายุ</Link>
-                    ) : r.extend_status !== 'pending' && (
-                      <Link to={`/extend/${r.id}`} className="btn-outline" style={{ flex: 1 }}>ต่ออายุยืม</Link>
-                    )}
-                    <Link to={`/return/${r.id}`} className="btn-outline" style={{ flex: 1 }}>คืนหนังสือ</Link>
+                      <Link to={`/extend/${r.id}/payment`} className="btn-outline">ชำระค่าต่ออายุ</Link>
+                    ) : r.extend_status !== 'pending' ? (
+                      <Link to={`/extend/${r.id}`} className="btn-outline">ต่ออายุยืม</Link>
+                    ) : <span />}
+                    <Link to={`/return/${r.id}`} className="btn-outline">คืนหนังสือ</Link>
                   </>
                 )}
               </div>
               {r.status === 'return_requested' && (
-                <p className="pill pill-blue" style={{ display: 'block', marginTop: 12, padding: 10, textAlign: 'center' }}>
+                <p className="notice notice-blue">
                   ส่งหลักฐานการคืนแล้ว รอเจ้าหน้าที่ตรวจสอบและโอนเงินมัดจำคืน
                 </p>
               )}

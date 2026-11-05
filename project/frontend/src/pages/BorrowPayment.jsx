@@ -72,7 +72,7 @@ export default function BorrowPayment() {
                 {payment.items.map(it => <li key={it.id}>{it.title}</li>)}
               </ul>
             ) : null}
-            <p className="muted" style={{ margin: '4px 0 0' }}>ค่าจัดส่ง + ค่ามัดจำ (คืนได้เมื่อคืนหนังสือ){payment?.item_count > 1 ? ' — ชำระรวมครั้งเดียวด้วยสลิปใบเดียว' : ''}</p>
+            <p className="muted" style={{ margin: '4px 0 0' }}>ค่าจัดส่ง + ค่ามัดจำ <span className="nb">(คืนได้เมื่อคืนหนังสือ)</span>{payment?.item_count > 1 ? ' — ชำระรวมครั้งเดียวด้วยสลิปใบเดียว' : ''}</p>
           </div>
         </div>
       )}
@@ -90,7 +90,7 @@ export default function BorrowPayment() {
               </p>
               <div className="warning-box" style={{ marginTop: 10 }}>
                 <AlertIcon size={16} />
-                <span>กรุณากรอกยอดเงินเองให้ตรงกับยอดด้านบนก่อนโอน (QR นี้ไม่ได้ฝังยอดเงินไว้อัตโนมัติ)</span>
+                <span>กรุณากรอกยอดเงินเองให้ตรงกับยอดด้านบนก่อนโอน<br /><span className="nb">(QR นี้ไม่ได้ฝังยอดเงินไว้อัตโนมัติ)</span></span>
               </div>
             </>
           ) : !error && <p className="muted center">กำลังโหลดยอดที่ต้องชำระ...</p>}
@@ -108,7 +108,7 @@ export default function BorrowPayment() {
         <input type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
       </label>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
-        สแกน QR ด้านบนผ่านแอปธนาคารเพื่อชำระเงิน แล้วแคปหน้าจอสลิปยืนยันการโอนมาแนบที่นี่ ระบบจะอ่าน QR บนสลิปเพื่อตรวจสอบอัตโนมัติ (ต้องเป็นสลิปเต็มหน้าจอที่เห็น QR ชัดเจน ห้ามครอปหรือแต่งรูป) หากตรวจอัตโนมัติไม่ได้ เจ้าหน้าที่จะตรวจสอบให้อีกครั้ง
+        สแกน QR ด้านบนผ่านแอปธนาคารเพื่อชำระเงิน แล้วแคปหน้าจอสลิปยืนยันการโอนมาแนบที่นี่ ระบบจะอ่าน QR บนสลิปเพื่อตรวจสอบอัตโนมัติ ต้องเป็นสลิปเต็มหน้าจอที่เห็น QR ชัดเจน ห้ามครอปหรือแต่งรูป หากตรวจอัตโนมัติไม่ได้ เจ้าหน้าที่จะตรวจสอบให้อีกครั้ง
       </p>
 
       {error && <p className="error-text">{error}</p>}

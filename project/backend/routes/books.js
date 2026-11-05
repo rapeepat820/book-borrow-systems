@@ -1,6 +1,10 @@
 const express = require('express');
 const pool = require('../config/db');
+const { calcDeposit } = require('../utils/calcBorrow');
 const router = express.Router();
+
+// ค่ามัดจำจริงที่ระบบจะเรียกเก็บ (20% ของมูลค่าหนังสือ) — คำนวณที่เดียวเพื่อให้ทุกหน้าแสดงตรงกัน
+const withDeposit = b => ({ ...b, deposit_amount: calcDeposit({ deposit_amount: b.type_deposit }, b) });
 
 // ค้นหา/แสดงรายการหนังสือทั้งหมด (public - ใช้ในหน้า Home)
 router.get('/', async (req, res) => {
@@ -19,7 +23,7 @@ router.get('/', async (req, res) => {
     }
     sql += ' ORDER BY b.created_at DESC';
     const [rows] = await pool.query(sql, params);
-    res.json(rows);
+    res.json(rows.map(withDeposit));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'ไม่สามารถโหลดรายการหนังสือได้' });
@@ -35,7 +39,7 @@ router.get('/:id', async (req, res) => {
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ message: 'ไม่พบหนังสือ' });
-    res.json(rows[0]);
+    res.json(withDeposit(rows[0]));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'เกิดข้อผิดพลาด' });

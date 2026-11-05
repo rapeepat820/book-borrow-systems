@@ -61,26 +61,28 @@ function splitShippingFee(totalFee, books) {
 }
 
 /**
- * คำนวณค่ามัดจำ
- * (ข้อ 6: ค่ามัดจำป้องกันหนังสือชำรุด/สูญหาย)
- * ใช้ค่ามัดจำมาตรฐานของประเภทหนังสือ แต่ถ้าหนังสือเล่มนั้นมีมูลค่า (price_value) สูงกว่า
- * ให้ใช้มูลค่าหนังสือแทน (กันกรณีหนังสือหายาก/ราคาแพงในประเภทเดียวกัน)
+ * คำนวณค่ามัดจำ = 20% ของมูลค่าหนังสือ (ปัดขึ้นเป็นหลักสิบบาท ขั้นต่ำ 10 บาท) — เป็นการยืม-คืน ไม่ใช่การซื้อ
+ * จึงไม่เรียกเก็บเต็มราคาเพื่อไม่ให้หนังสือราคาสูงไม่มีคนยืม (ปรับ % ได้ด้วยตัวแปร env DEPOSIT_PERCENT)
+ * ถ้าหนังสือไม่ได้ระบุมูลค่า จะใช้ค่ามัดจำมาตรฐานของประเภทหนังสือแทน
  */
+const DEPOSIT_PERCENT = Math.min(envNumber('DEPOSIT_PERCENT', 20), 100);
 function calcDeposit(bookType, book) {
-  const typeDefault = Number(bookType.deposit_amount);
-  const bookValue = Number(book.price_value || 0);
-  return Math.max(typeDefault, bookValue);
+  const value = Number(book.price_value || 0);
+  if (value > 0) {
+    return Math.max(Math.ceil((value * DEPOSIT_PERCENT) / 100 / 10) * 10, 10);
+  }
+  return Number(bookType.deposit_amount || 0);
 }
 
 // ค่าธรรมเนียมต่ออายุยืม (บาทต่อวันที่ขอต่อ) — ลูกค้าต้องชำระก่อนคำขอจึงจะมีผลกับกำหนดคืนจริง
-const EXTEND_FEE_PER_DAY = 5;
+
 
 /**
- * คำนวณค่าธรรมเนียมต่ออายุยืม
- * extend_fee = จำนวนวันที่ขอต่อ * ค่าธรรมเนียมต่อวัน
+ * ค่าธรรมเนียมต่ออายุยืม 1 ครั้ง = เท่ากับค่ามัดจำของหนังสือเล่มนั้น
+ * (ต่ออายุได้เพิ่มเท่าระยะเวลายืมปกติของประเภทหนังสือนั้น)
  */
-function calcExtendFee(extraDays) {
-  return Number(extraDays) * EXTEND_FEE_PER_DAY;
+function calcExtendFee(depositAmount) {
+  return Number(depositAmount) || 0;
 }
 
 // ------------------------------------------------------------
@@ -124,7 +126,7 @@ function attachLateInfo(row) {
 }
 
 module.exports = {
-  calcDueDate, calcDeposit, calcExtendFee, EXTEND_FEE_PER_DAY,
+  calcDueDate, calcDeposit, calcExtendFee, DEPOSIT_PERCENT,
   LATE_FEE_PER_DAY, LATE_FEE_GRACE_DAYS, calcLateFee, LATE_DAYS_SQL, attachLateInfo,
   PACKAGING_WEIGHT_G, MAX_BOOKS_PER_ORDER, calcTotalWeight, calcShippingFeeByWeight, splitShippingFee
 };

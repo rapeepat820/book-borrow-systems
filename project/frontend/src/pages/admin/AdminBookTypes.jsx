@@ -56,7 +56,7 @@ export default function AdminBookTypes() {
 
   return (
     <div>
-      <p className="muted">กำหนดจำนวนวันที่ยืมได้ และค่ามัดจำมาตรฐาน แยกตามหมวดหมู่/ประเภทหนังสือ (ข้อ 4 และ 6)</p>
+      <p className="muted">กำหนดจำนวนวันที่ยืมได้ของแต่ละประเภทหนังสือ ส่วนค่ามัดจำระบบคิดให้เองที่ 20% ของมูลค่าหนังสือแต่ละเล่ม (ค่าด้านล่างใช้เฉพาะเล่มที่ไม่ได้ระบุมูลค่า)</p>
 
       <form className="card" onSubmit={handleSubmit}>
         <h3>{editingId ? `แก้ไขหมวดหมู่ "${types.find(t => t.id === editingId)?.type_name || ''}"` : 'เพิ่มหมวดหมู่หนังสือใหม่'}</h3>
@@ -72,7 +72,7 @@ export default function AdminBookTypes() {
             <input type="number" min="1" required value={form.borrow_days} onChange={e => setForm({ ...form, borrow_days: e.target.value })} />
           </div>
           <div>
-            <label>ค่ามัดจำมาตรฐาน (บาท)</label>
+            <label>ค่ามัดจำสำรอง (บาท) — ใช้เมื่อหนังสือไม่ระบุมูลค่า</label>
             <input type="number" min="0" required value={form.deposit_amount} onChange={e => setForm({ ...form, deposit_amount: e.target.value })} />
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function AdminBookTypes() {
                 </div>
                 <div className="type-card-stat">
                   <span className="num">{t.deposit_amount}</span>
-                  <span className="lbl">มัดจำ (บาท)</span>
+                  <span className="lbl">มัดจำสำรอง (บาท)</span>
                 </div>
               </div>
               <div className="type-card-actions">

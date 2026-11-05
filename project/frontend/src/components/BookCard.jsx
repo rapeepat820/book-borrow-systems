@@ -4,9 +4,9 @@ import FavButton from './FavButton';
 
 export default function BookCard({ book, showAvailability = true }) {
   const available = book.available_copies > 0;
-  // ค่าหนังสือ (มูลค่า) และค่ามัดจำที่ต้องวาง = มากกว่าระหว่างมัดจำตามประเภทหนังสือกับมูลค่าหนังสือ (ตรงกับที่ระบบเรียกเก็บจริง)
+  // มูลค่าหนังสือ และค่ามัดจำจริงที่ระบบเรียกเก็บ (20% ของมูลค่า คำนวณจากเซิร์ฟเวอร์ให้ตรงกันทุกหน้า)
   const value = Number(book.price_value || 0);
-  const deposit = Math.max(Number(book.type_deposit || 0), value);
+  const deposit = Number(book.deposit_amount ?? book.type_deposit ?? 0);
   return (
     <Link to={`/books/${book.id}`} className="book-card">
       <FavButton bookId={book.id} />

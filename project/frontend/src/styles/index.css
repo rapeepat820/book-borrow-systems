@@ -570,7 +570,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--primary); }
    ============================================================ */
 .badge { display: inline-block; background: var(--surface-2); color: var(--text); padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
-.pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 14px; font-size: 12px; font-weight: 600; }
 .pill-blue { background: var(--primary-50); color: var(--primary-dark); }
 .pill-green { background: var(--success-50); color: var(--success); }
 .pill-red { background: var(--danger-50); color: var(--danger); }
@@ -627,7 +627,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--primary); }
 .record-card { display: flex; gap: 12px; }
 .record-card .book-cover, .record-list .book-cover { width: 72px; height: 100px; margin-bottom: 0; flex-shrink: 0; font-size: 20px; }
 .record-body { flex: 1; min-width: 0; }
-.record-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+.record-header { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
 .record-header h3 { font-size: 14.5px; margin: 0; line-height: 1.35; }
 .proof-preview { max-width: 220px; border-radius: var(--radius-sm); margin-top: 8px; display: block; }
 .proof-thumb { width: 46px; height: 46px; object-fit: cover; border-radius: 8px; }
@@ -822,3 +822,59 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--primary); }
 .book-meta.book-price span + span::before { content: none; margin: 0; }
 .book-meta.book-price span + span { font-weight: 500; color: var(--muted); }
 .book-meta.edition { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 26px; }
+
+
+/* ============================================================
+   หน้าต่างตรวจสอบของแอดมิน (ตรวจการคืน / โอนมัดจำคืน) — จัดเป็นส่วนๆ อ่านง่าย
+   ============================================================ */
+.review-modal { max-width: 460px; padding: 22px 20px 18px; }
+.review-head h3 { margin: 0 0 2px; font-size: 18px; }
+.review-head p { margin: 0 0 14px; color: var(--muted); font-size: 13.5px; }
+.review-proof { display: block; position: relative; margin-bottom: 14px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); text-decoration: none; }
+.review-proof img { display: block; width: 100%; height: 200px; object-fit: contain; }
+.review-proof span { display: block; padding: 7px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); background: var(--surface); }
+.review-box { border: 1px solid var(--border); border-radius: 14px; padding: 4px 14px; background: var(--surface); }
+.review-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.review-row span { color: var(--muted); }
+.review-row b { font-weight: 600; text-align: right; }
+.review-row.minus b { color: var(--danger); }
+.review-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0 10px; }
+.review-total span { font-weight: 600; font-size: 14px; }
+.review-total b { font-size: 22px; letter-spacing: -0.01em; }
+.review-note { margin: 8px 2px 0; font-size: 12px; line-height: 1.55; color: var(--muted); }
+.review-account { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); }
+.review-label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.review-account-text { font-size: 14.5px; line-height: 1.6; word-break: break-word; }
+.review-account-text.warn { color: var(--danger); font-size: 13.5px; }
+.review-account .btn-link { padding: 6px 0 0; }
+.modal-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 18px; }
+.modal-actions button { width: 100%; margin: 0; }
+
+
+/* ===== การ์ดรายการยืม: ข้อความประกอบ ปุ่ม และกล่องแจ้งสถานะให้เรียบร้อย ===== */
+.record-note { margin: 0 0 4px; font-size: 12.5px; color: var(--muted); }
+.record-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.record-actions > a, .record-actions > button { display: flex; align-items: center; justify-content: center; margin: 0; padding: 11px 8px; white-space: nowrap; text-align: center; }
+.record-actions .span-2 { grid-column: 1 / -1; }
+.notice { display: block; margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.55; text-align: center; font-weight: 500; }
+.notice-blue { background: var(--primary-50); color: var(--primary-dark); }
+
+/* ตารางแอดมินบนจอเล็ก: เลื่อนซ้าย-ขวาได้ ไม่บีบคอลัมน์จนข้อความแตกเป็นแถวสูง */
+@media (max-width: 820px) {
+  .data-table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  .admin-header { flex-wrap: wrap; gap: 12px; }
+  .admin-header .btn-primary, .admin-header .btn-secondary { white-space: nowrap; }
+}
+
+
+/* ===== วงเล็บ/ข้อความกำกับสั้นๆ ให้อยู่ติดกันบรรทัดเดียว ไม่แตกกลางคำ ===== */
+.nb { white-space: nowrap; }
+
+/* กล่องสรุปราคา: ป้าย (ซ้าย) กับตัวเลข (ขวา) แถวละบรรทัด รายละเอียดยาวแยกเป็นข้อความเล็กใต้แถว */
+.qrow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 9px 0 2px; font-size: 14px; }
+.qrow > span:first-child { min-width: 0; }
+.qrow > b { white-space: nowrap; font-weight: 600; }
+.qnote { margin: 0 0 6px !important; font-size: 12.5px !important; line-height: 1.5; color: var(--muted); }
+.qitem { margin: 1px 0 !important; font-size: 12.5px !important; line-height: 1.5; color: var(--muted); }
+.qtotal { font-size: 15px; margin-top: 4px; }
+.qtotal > b { font-size: 18px; }

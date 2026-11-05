@@ -75,13 +75,14 @@ export default function BookDetail() {
         <span className={`pill ${book.available_copies > 0 ? 'pill-green' : 'pill-red'}`}>
           {book.available_copies > 0 ? `พร้อมให้ยืม (เหลือ ${book.available_copies})` : 'ยืมหมดแล้ว'}
         </span>
-        <span className="pill pill-amber">มัดจำ {book.type_deposit} บาท</span>
+        <span className="pill pill-amber">มัดจำ {Number(book.deposit_amount ?? book.type_deposit).toLocaleString('th-TH')} บาท</span>
       </div>
 
       <div className="section-title">ข้อมูลหนังสือ</div>
       <div className="card" style={{ padding: 6 }}>
         {[
           ['ชื่อหนังสือ', book.title],
+          ['มูลค่าหนังสือ', Number(book.price_value) > 0 ? `${Number(book.price_value).toLocaleString('th-TH')} บาท` : null],
           ['ผู้แต่ง', book.author],
           ['สำนักพิมพ์', book.publisher],
           ['ปีที่พิมพ์', book.publish_year ? `${book.publish_year} (ค.ศ.)` : null, true],
@@ -125,7 +126,7 @@ export default function BookDetail() {
               </div>
             )}
             {mine?.status === 'waiting' && (
-              <div className="warning-box"><span>คุณอยู่ในคิวที่ <b>{mine.position}</b> (มีผู้จองทั้งหมด {rs.queue_length} คน) เมื่อมีเล่มว่างเราจะอีเมลแจ้ง</span></div>
+              <div className="warning-box"><span>คุณอยู่ในคิวที่ <b>{mine.position}</b> <span className="nb">(มีผู้จองทั้งหมด {rs.queue_length} คน)</span> เมื่อมีเล่มว่างเราจะอีเมลแจ้ง</span></div>
             )}
             {canBorrow ? (
               <div className="btn-row">

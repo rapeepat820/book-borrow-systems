@@ -114,13 +114,18 @@ export default function Borrow() {
 
       {quote && (
         <div className="quote-box">
-          <p>ค่าจัดส่ง: <b>{quote.shipping_fee} บาท</b> <span className="muted">({quote.box_name} · น้ำหนักพัสดุ {quote.total_weight_g} กรัม{quote.rate_source === 'flash' ? ' · ราคาจากขนส่งโดยตรง' : quote.rate_source === 'manual_fallback' ? ' · ราคาประมาณการ' : ''})</span></p>
-          {quote.rate_note && <p className="muted" style={{ fontSize: 12.5 }}>{quote.rate_note}</p>}
-          <p>ค่ามัดจำหนังสือ (คืนเต็มจำนวนเมื่อคืนหนังสือสภาพดี): <b>{quote.deposit_amount} บาท</b></p>
-          <p>วันที่เริ่มยืม: {quote.borrow_date}</p>
-          <p>กำหนดคืนภายในวันที่: <b>{quote.due_date}</b> (รวมเวลาจัดส่งไป-กลับ {quote.delivery_days * 2} วัน)</p>
+          <div className="qrow"><span>ค่าจัดส่ง <span className="nb">({String(quote.box_name).replace(/\s*\(.*\)\s*$/, '')})</span></span><b>{quote.shipping_fee} บาท</b></div>
+          <p className="qnote">
+            น้ำหนักพัสดุ {quote.total_weight_g} กรัม{quote.rate_source === 'flash' ? ' · ราคาจากขนส่งโดยตรง' : quote.rate_source === 'manual_fallback' ? ' · ราคาประมาณการ' : ''}
+            {quote.rate_note && <><br />{quote.rate_note}</>}
+          </p>
+          <div className="qrow"><span>ค่ามัดจำ <span className="nb">(คืนได้)</span></span><b>{quote.deposit_amount} บาท</b></div>
+          <p className="qnote">คิด 20% ของมูลค่าหนังสือ คืนเต็มจำนวนเมื่อคืนหนังสือสภาพดี</p>
+          <div className="qrow"><span>วันที่เริ่มยืม</span><b>{quote.borrow_date}</b></div>
+          <div className="qrow"><span>กำหนดคืนภายใน</span><b>{quote.due_date}</b></div>
+          <p className="qnote">รวมเวลาจัดส่งไป-กลับ {quote.delivery_days * 2} วัน</p>
           <hr />
-          <p>ยอดชำระตอนนี้ (ค่าส่ง + มัดจำ): <b>{quote.total_pay} บาท</b></p>
+          <div className="qrow qtotal"><span>ยอดชำระตอนนี้ <span className="nb">(ค่าส่ง + มัดจำ)</span></span><b>{quote.total_pay} บาท</b></div>
         </div>
       )}
 

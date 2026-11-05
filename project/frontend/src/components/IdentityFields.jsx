@@ -66,8 +66,8 @@ export default function IdentityFields({ value, onChange, compact = false }) {
         onChange={e => onChange({ id_number: e.target.value })} />
       {id.length === 13 && !validateThaiId(id) && <p className="error-text" style={{ margin: '4px 0 0' }}>เลขบัตรไม่ถูกต้อง กรุณาตรวจอีกครั้ง</p>}
 
-      <PhotoPicker label="รูปถ่ายบัตรประชาชน (ด้านหน้า)"
-        hint="ถ่ายให้เห็นชื่อ-นามสกุลและเลขบัตรชัดเจน ไม่เบลอ ไม่สะท้อนแสง (ปิดบังศาสนาและหมู่เลือดได้ เราไม่ต้องใช้)"
+      <PhotoPicker label={<>รูปถ่ายบัตรประชาชน <span className="nb">(ด้านหน้า)</span></>}
+        hint={<>ถ่ายให้เห็นชื่อ-นามสกุลและเลขบัตรชัดเจน ไม่เบลอ ไม่สะท้อนแสง<br />ปิดบังศาสนาและหมู่เลือดได้ เราไม่ต้องใช้</>}
         file={value.id_card} onPick={f => onChange({ id_card: f })} />
       <PhotoPicker label="รูปเซลฟี่ถือบัตรประชาชน"
         hint="ถ่ายให้เห็นใบหน้าและบัตรในรูปเดียวกัน ใช้บัตรใบเดียวกับที่แนบด้านบน"

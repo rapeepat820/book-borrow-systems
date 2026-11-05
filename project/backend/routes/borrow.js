@@ -291,20 +291,40 @@ router.post('/:id/payment-slip', requireAuth, uploadPaymentSlip.single('slip_ima
 // ขอต่ออายุยืม (ยืดเวลาคืน) — ต้องชำระค่าธรรมเนียมต่ออายุก่อน (ดู extend-payment-qr / extend-payment-slip)
 // แล้วรอแอดมินตรวจสอบสลิปจึงจะมีผลกับกำหนดคืนจริง
 // ------------------------------------------------------------
+// ต่ออายุได้ครั้งละเท่าระยะเวลายืมปกติของประเภทหนังสือนั้น และค่าธรรมเนียม = เท่ากับค่ามัดจำของหนังสือเล่มนั้น
+async function loadExtendInfo(recordId, userId) {
+  const [[record]] = await pool.query(
+    `SELECT br.*, b.price_value, bt.borrow_days, bt.deposit_amount AS type_deposit
+     FROM borrow_records br JOIN books b ON br.book_id = b.id JOIN book_types bt ON b.book_type_id = bt.id
+     WHERE br.id = ? AND br.user_id = ?`, [recordId, userId]);
+  if (!record) return null;
+  const days = Number(record.borrow_days) || 7;
+  const fee = calcExtendFee(calcDeposit({ deposit_amount: record.type_deposit }, record));
+  return { record, days, fee };
+}
+
+router.get('/:id/extend-quote', requireAuth, async (req, res) => {
+  try {
+    const info = await loadExtendInfo(req.params.id, req.user.id);
+    if (!info) return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' });
+    res.json({ extra_days: info.days, extend_fee: info.fee });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'คำนวณค่าต่ออายุไม่สำเร็จ' });
+  }
+});
+
 router.post('/:id/extend-request', requireAuth, async (req, res) => {
   try {
-    const { extra_days } = req.body;
-    const days = Number(extra_days) || 7;
-    const [[record]] = await pool.query(
-      'SELECT * FROM borrow_records WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-    if (!record) return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' });
+    const info = await loadExtendInfo(req.params.id, req.user.id);
+    if (!info) return res.status(404).json({ message: 'ไม่พบรายการยืมนี้' });
+    const { record, days, fee: extend_fee } = info;
     if (record.status !== 'borrowing') {
       return res.status(400).json({ message: 'ขอต่ออายุยืมได้เฉพาะรายการที่กำลังยืมอยู่เท่านั้น' });
     }
     if (record.extend_status === 'pending') {
       return res.status(400).json({ message: 'มีคำขอต่ออายุยืมที่รอดำเนินการอยู่แล้ว' });
     }
-    const extend_fee = calcExtendFee(days);
     await pool.query(
       `UPDATE borrow_records
        SET extend_requested_days = ?, extend_status = 'pending',

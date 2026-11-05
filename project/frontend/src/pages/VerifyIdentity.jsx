@@ -52,7 +52,7 @@ export default function VerifyIdentity() {
         </div>
       )}
       {!st ? <p className="muted">กำลังโหลด...</p> : st.status === 'verified' ? (
-        <div className="card"><p className="pill pill-green" style={{ display: 'block', padding: 12 }}>ยืนยันตัวตนแล้ว{st.last4 ? ` (เลขบัตรลงท้าย ${st.last4})` : ''} — ยืมหนังสือได้ตามปกติ</p>
+        <div className="card"><p className="pill pill-green" style={{ display: 'block', padding: 12 }}>ยืนยันตัวตนแล้ว{st.last4 && <> <span className="nb">(เลขบัตรลงท้าย {st.last4})</span></>} — ยืมหนังสือได้ตามปกติ</p>
           <p className="muted" style={{ marginBottom: 0 }}>รูปบัตรและเซลฟี่ของคุณถูกลบออกจากระบบแล้ว</p></div>
       ) : st.status === 'pending' ? (
         <div className="card"><p className="pill pill-amber" style={{ display: 'block', padding: 12 }}>ส่งข้อมูลแล้ว รอแอดมินตรวจสอบ</p>
@@ -68,7 +68,7 @@ export default function VerifyIdentity() {
           {error && <p className="error-text">{error}</p>}
           <button className="btn-primary" style={{ marginTop: 16 }} disabled={busy}>{busy ? 'กำลังส่ง...' : 'ส่งข้อมูลยืนยันตัวตน'}</button>
           {fromRegister && (
-            <p className="footnote">ยังไม่พร้อม? <Link to="/" className="btn-link">ข้ามไปก่อน</Link> (เลือกดูหนังสือได้ แต่ต้องยืนยันตัวตนก่อนจึงจะยืมได้)</p>
+            <p className="footnote">ยังไม่พร้อม? <Link to="/" className="btn-link">ข้ามไปก่อน</Link><br /><span className="muted">เลือกดูหนังสือได้ แต่ต้องยืนยันตัวตนก่อนจึงจะยืมได้</span></p>
           )}
         </form>
       )}

@@ -108,7 +108,7 @@ export default function AdminDashboard() {
         <Link to="/admin/reports" className="card stat-card link">
           <div className="stat-card-icon"><BookStackIcon size={20} /></div>
           <h3>{stats.waitingReservations ?? 0}</h3>
-          <p>คนรอคิวจองหนังสือ (ดูรายงาน)</p>
+          <p>คนรอคิวจองหนังสือ <span className="nb">(ดูรายงาน)</span></p>
         </Link>
         <Link to="/admin/contact" className="card stat-card link warn">
           <div className="stat-card-icon"><AlertIcon size={20} /></div>

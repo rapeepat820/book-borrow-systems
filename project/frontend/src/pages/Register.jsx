@@ -60,7 +60,7 @@ export default function Register() {
 
           <label>ที่อยู่สำหรับจัดส่งหนังสือ<span className="required-mark">*</span></label>
           <p className="muted" style={{ margin: '0 0 6px', fontSize: 12.5 }}>
-            ระบบจะใช้ที่อยู่นี้ในการจัดส่งหนังสือทุกครั้งที่คุณยืม โดยไม่ต้องกรอกใหม่อีก (แก้ไขได้ภายหลังที่หน้าโปรไฟล์)
+            ระบบจะใช้ที่อยู่นี้ในการจัดส่งหนังสือทุกครั้งที่คุณยืม โดยไม่ต้องกรอกใหม่อีก <span className="nb">(แก้ไขได้ภายหลังที่หน้าโปรไฟล์)</span>
           </p>
           <input required placeholder="บ้านเลขที่ / หมู่บ้าน / ซอย / ถนน"
             value={form.address_detail} onChange={e => setForm({ ...form, address_detail: e.target.value })} />

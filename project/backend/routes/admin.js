@@ -502,7 +502,7 @@ router.put('/borrow-records/:id/verify-extend-payment', async (req, res) => {
 
 // แอดมินตรวจสอบหลักฐานการคืน แล้วยืนยันคืนสำเร็จ
 // คำนวณค่าปรับเกินกำหนด (นับถึงวันที่ลูกค้าแจ้งคืน) หักจากมัดจำ แล้วสร้างยอดที่ต้องโอนคืน (refund_status = 'pending')
-// แอดมินแก้ยอดค่าปรับเองได้ (เช่น ยกเว้นค่าปรับ) โดยส่ง late_fee มาใน body; การโอนเงินจริงบันทึกที่ /mark-refunded
+// ยอดทั้งหมดคำนวณโดยระบบ (แก้เองไม่ได้); การโอนเงินจริงบันทึกที่ /mark-refunded
 router.put('/borrow-records/:id/confirm-return', async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -525,15 +525,8 @@ router.put('/borrow-records/:id/confirm-return', async (req, res) => {
 
     const deposit = Number(record.deposit_amount);
     const lateDays = Math.max(Number(record.late_days_raw || 0) - LATE_FEE_GRACE_DAYS, 0);
-    let lateFee = calcLateFee(lateDays, deposit);
-    if (req.body && req.body.late_fee !== undefined && req.body.late_fee !== null && req.body.late_fee !== '') {
-      const custom = Number(req.body.late_fee);
-      if (!Number.isFinite(custom) || custom < 0 || custom > deposit) {
-        await conn.rollback();
-        return res.status(400).json({ message: `ค่าปรับต้องอยู่ระหว่าง 0 ถึง ${deposit} บาท (ไม่เกินค่ามัดจำ)` });
-      }
-      lateFee = Math.round(custom * 100) / 100;
-    }
+    // ค่าปรับและยอดคืนมัดจำกำหนดโดยระบบตามกติกา (วันละ X บาท ไม่เกินมัดจำ) แอดมินแก้ตัวเลขเองไม่ได้
+    const lateFee = calcLateFee(lateDays, deposit);
     const refundAmount = Math.round((deposit - lateFee) * 100) / 100;
     const refundStatus = refundAmount > 0 ? 'pending' : 'none';
 

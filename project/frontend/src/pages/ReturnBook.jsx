@@ -69,7 +69,7 @@ export default function ReturnBook() {
           <AlertIcon size={17} />
           <span>
             หนังสือเล่มนี้เลยกำหนดคืนมา {record.late_days} วัน ค่าปรับสะสม <b>{Number(record.late_fee_due).toLocaleString()} บาท</b>
-            (วันละ {record.late_fee_per_day} บาท) จะถูกหักจากเงินมัดจำ ค่าปรับจะหยุดนับเมื่อคุณส่งหลักฐานการคืนในหน้านี้
+            <span className="nb">(วันละ {record.late_fee_per_day} บาท)</span> จะถูกหักจากเงินมัดจำ ค่าปรับจะหยุดนับเมื่อคุณส่งหลักฐานการคืนในหน้านี้
           </span>
         </div>
       )}

@@ -4,25 +4,31 @@ import { api } from '../api';
 import BookCover from '../components/BookCover';
 import { ChevronLeftIcon, AlertIcon } from '../components/Icons';
 
-const OPTIONS = [3, 7, 14];
-const EXTEND_FEE_PER_DAY = 5; // บาทต่อวัน (ต้องตรงกับ backend/utils/calcBorrow.js) — ใช้แสดงยอดประมาณก่อนกดยืนยัน
+const addDays = (iso, n) => {
+  const d = new Date(String(iso).slice(0, 10) + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+};
 
 export default function RequestExtend() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [record, setRecord] = useState(null);
-  const [days, setDays] = useState(7);
+  const [quote, setQuote] = useState(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => { api.getBorrowRecord(id).then(setRecord); }, [id]);
+  useEffect(() => {
+    api.getBorrowRecord(id).then(setRecord).catch(e => setError(e.message));
+    api.getExtendQuote(id).then(setQuote).catch(e => setError(e.message));
+  }, [id]);
 
   async function handleConfirm() {
     setSubmitting(true);
     setError('');
     try {
-      const result = await api.requestExtend(id, days);
-      navigate(`/extend/${id}/payment`, { state: { days, dueDate: record.due_date, fee: result.extend_fee } });
+      const result = await api.requestExtend(id);
+      navigate(`/extend/${id}/payment`, { state: { days: result.extra_days, dueDate: record.due_date, fee: result.extend_fee } });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -30,17 +36,15 @@ export default function RequestExtend() {
     }
   }
 
-  if (!record) return <p className="muted">กำลังโหลด...</p>;
+  if (!record || !quote) return error ? <p className="error-text">{error}</p> : <p className="muted">กำลังโหลด...</p>;
 
+  const oldDue = String(record.due_date).slice(0, 10);
   return (
     <div>
       <div className="book-detail-header">
         <Link to="/my-book" className="back-circle" style={{ marginBottom: 0 }}><ChevronLeftIcon size={18} /></Link>
-        <span className="book-detail-title">ยืนยัน</span>
+        <span className="book-detail-title">ต่ออายุการยืม</span>
       </div>
-
-      <h2 style={{ fontSize: 18, marginBottom: 2 }}>ขอยืดเวลาการยืม</h2>
-      <p className="muted" style={{ marginBottom: 16 }}>เลือกจำนวนวันที่ต้องการต่ออายุการยืมหนังสือเล่มนี้ (มีค่าธรรมเนียมต่ออายุตามจำนวนวัน)</p>
 
       <div className="card summary-card">
         <BookCover book={record} />
@@ -51,24 +55,16 @@ export default function RequestExtend() {
       </div>
 
       <div className="card">
-        <div className="summary-row"><span className="label">กำหนดคืนเดิม</span><span className="value">{record.due_date?.slice(0, 10)}</span></div>
-        <div className="summary-row">
-          <span className="label">ระยะเวลาที่ต้องการต่อ</span>
-          <span className="value">
-            <select value={days} onChange={e => setDays(Number(e.target.value))} style={{ width: 'auto', padding: '4px 10px' }}>
-              {OPTIONS.map(d => <option key={d} value={d}>+{d} วัน</option>)}
-            </select>
-          </span>
-        </div>
-      </div>
-
-      <div className="quote-box">
-        <p>ค่าธรรมเนียมต่ออายุ ({days} วัน x {EXTEND_FEE_PER_DAY} บาท/วัน): <b>{days * EXTEND_FEE_PER_DAY} บาท</b></p>
+        <div className="summary-row"><span className="label">กำหนดคืนเดิม</span><span className="value">{oldDue}</span></div>
+        <div className="summary-row"><span className="label">ต่ออายุเพิ่ม</span><span className="value">+{quote.extra_days} วัน</span></div>
+        <div className="summary-row"><span className="label">กำหนดคืนใหม่</span><span className="value"><b>{addDays(oldDue, quote.extra_days)}</b></span></div>
+        <div className="summary-row"><span className="label">ค่าธรรมเนียมต่ออายุ</span><span className="value"><b>{Number(quote.extend_fee).toLocaleString()} บาท</b></span></div>
+        <p className="muted" style={{ fontSize: 12.5, margin: '8px 0 0' }}>ค่าธรรมเนียมเท่ากับค่ามัดจำของหนังสือเล่มนี้ ต่ออายุได้ครั้งละเท่าระยะเวลายืมปกติของหนังสือประเภทนี้</p>
       </div>
 
       <div className="warning-box">
         <AlertIcon size={17} />
-        <span>หมายเหตุ: ต้องชำระค่าธรรมเนียมต่ออายุและรอเจ้าหน้าที่ตรวจสอบสลิปก่อน จึงจะมีผลกับกำหนดคืนจริง</span>
+        <span>ต้องชำระค่าธรรมเนียมและรอเจ้าหน้าที่ตรวจสอบสลิปก่อน จึงจะมีผลกับกำหนดคืนจริง ค่าธรรมเนียมนี้ไม่คืนให้</span>
       </div>
 
       {error && <p className="error-text">{error}</p>}

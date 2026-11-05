@@ -1,3 +1,7 @@
  node_modules/
    dist/
    .env
+
+# รูปที่ลูกค้าอัปโหลด (สลิป/หลักฐานคืน) ห้ามขึ้น GitHub — เก็บเฉพาะโฟลเดอร์เปล่าไว้ให้ระบบเขียนไฟล์ได้
+backend/uploads/*/*
+!backend/uploads/*/.gitkeep

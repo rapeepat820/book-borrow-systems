@@ -135,7 +135,7 @@ export default function Contact() {
         <input required maxLength={100} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
         <label>อีเมลสำหรับรับคำตอบ<span className="required-mark">*</span></label>
         <input required type="email" maxLength={150} placeholder="example@gmail.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-        <label>เบอร์โทร (ไม่บังคับ)</label>
+        <label>เบอร์โทร <span className="nb">(ไม่บังคับ)</span></label>
         <input inputMode="tel" maxLength={20} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
         <label>หัวข้อ<span className="required-mark">*</span></label>
         <select value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })}>
@@ -143,7 +143,7 @@ export default function Contact() {
         </select>
         {user && records.length > 0 && (
           <>
-            <label>รายการยืมที่เกี่ยวข้อง (ไม่บังคับ)</label>
+            <label>รายการยืมที่เกี่ยวข้อง <span className="nb">(ไม่บังคับ)</span></label>
             <select value={form.borrow_record_id} onChange={e => setForm({ ...form, borrow_record_id: e.target.value })}>
               <option value="">ไม่ระบุ</option>
               {records.map(r => <option key={r.id} value={r.id}>#{r.id} — {r.title}</option>)}
