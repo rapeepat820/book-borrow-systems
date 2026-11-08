@@ -57,8 +57,12 @@ export default function AdminBooks() {
 
   async function handleDelete(id) {
     if (!confirm('ยืนยันการลบหนังสือเล่มนี้?')) return;
-    await api.adminDeleteBook(id);
-    load();
+    try {
+      await api.adminDeleteBook(id);
+      load();
+    } catch (err) {
+      alert(err.message); // เช่น ลบไม่ได้เพราะหนังสือเล่มนี้มีประวัติการยืม
+    }
   }
 
   // เติมรูปปก/ปีที่พิมพ์/ฉบับที่/เล่มที่ ให้หนังสือทุกเล่มที่ยังว่าง แล้วคอยถามความคืบหน้าจนเสร็จ

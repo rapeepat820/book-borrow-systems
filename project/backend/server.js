@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./utils/asyncGuard'); // จับ error ของ route แบบ async ไม่ให้เซิร์ฟเวอร์ล่ม
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -73,6 +74,21 @@ if (fs.existsSync(frontendIndexHtml)) {
     res.sendFile(frontendIndexHtml);
   });
 }
+
+// ตัวจัดการ error กลาง: ตอบกลับเป็น JSON ที่อ่านรู้เรื่อง และไม่ให้เซิร์ฟเวอร์ล่ม
+app.use((err, req, res, next) => {
+  console.error('[error]', req.method, req.originalUrl, '-', err && err.message);
+  if (res.headersSent) return next(err);
+  const code = err && err.code;
+  if (code === 'ER_ROW_IS_REFERENCED_2' || code === 'ER_ROW_IS_REFERENCED') {
+    return res.status(409).json({ message: 'ลบหรือแก้ไขไม่ได้ เพราะมีข้อมูลอื่นอ้างอิงอยู่' });
+  }
+  if (code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'ข้อมูลนี้มีอยู่ในระบบแล้ว' });
+  res.status(err && err.status ? err.status : 500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง' });
+});
+
+// กันโปรเซสล่มจาก error ที่หลุดมาทางอื่น (บันทึกไว้ใน log แล้วทำงานต่อ)
+process.on('unhandledRejection', reason => console.error('[unhandledRejection]', reason && reason.message ? reason.message : reason));
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
