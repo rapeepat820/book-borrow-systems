@@ -135,11 +135,6 @@ router.put('/books/:id', async (req, res) => {
 });
 
 router.delete('/books/:id', async (req, res) => {
-  // หนังสือที่เคยมีคนยืมลบไม่ได้ (ต้องเก็บประวัติไว้) — ถ้าไม่อยากให้แสดง ให้ปรับจำนวนเล่มเป็น 0 แทน
-  const [[{ n }]] = await pool.query('SELECT COUNT(*) AS n FROM borrow_records WHERE book_id = ?', [req.params.id]);
-  if (n > 0) {
-    return res.status(409).json({ message: `ลบไม่ได้ เพราะหนังสือเล่มนี้มีประวัติการยืม ${n} รายการ (ลบได้เฉพาะเล่มที่ไม่เคยมีคนยืม)` });
-  }
   await pool.query('DELETE FROM books WHERE id = ?', [req.params.id]);
   res.json({ message: 'ลบหนังสือสำเร็จ' });
 });
